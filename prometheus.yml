@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 5s         # every 5 seconds
+  evaluation_interval: 5s     # every 5 seconds
+
+  external_labels:
+    env: "mongo-benchmark"
+
+scrape_configs:
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    metrics_path: "/metrics"
+    scrape_interval: 5s
+
+  - job_name: "mongodb"
+    static_configs:
+      - targets: ["mongo-exporter:9216"]
+    metrics_path: "/metrics"
+    scrape_interval: 5s
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
