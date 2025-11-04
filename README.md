@@ -1,4 +1,4 @@
-# 🧩 Blog Monitoring Stack (FastAPI + MongoDB + Prometheus + Grafana)
+# Blog Monitoring Stack (FastAPI + MongoDB + Prometheus + Grafana)
 
 This repository contains a **containerized monitoring and database stack** used for analyzing and visualizing the performance of a MongoDB-based FastAPI blog system.
 It includes MongoDB, Prometheus, Grafana, and Node/MongoDB exporters — all orchestrated via **Docker Compose**.
