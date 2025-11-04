@@ -70,7 +70,7 @@ Swagger UI is available at: [http://localhost:8000/docs](http://localhost:8000/d
 
 ---
 
-## 📊 Grafana Dashboards
+## Grafana Dashboards
 
 Once the containers are up:
 
