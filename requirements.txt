@@ -57,3 +57,4 @@ uvloop==0.22.1
 watchfiles==1.1.1
 wcwidth==0.2.14
 websockets==15.0.1
+locust~=2.42.1

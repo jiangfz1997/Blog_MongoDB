@@ -49,12 +49,23 @@ docker compose down --remove-orphans
 Run the backend manually:
 
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 This backend connects to the same MongoDB instance (default URI `mongodb://localhost:27017`).
 
 Swagger UI is available at: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Load test
+Locust is used for load testing the FastAPI backend. To run locust:
+
+```bash
+locust -f locust_test.py --host http://localhost:8000
+```
+
+Then open [http://localhost:8089](http://localhost:8089) in your browser to access the Locust web interface.
+
+Log tracking still under development.
 
 ---
 

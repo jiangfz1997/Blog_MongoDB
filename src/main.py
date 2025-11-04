@@ -1,12 +1,24 @@
 from typing import Union
-
-from fastapi import FastAPI
 from src.db.mongo import db
 from src.api.routes import router as api_router
+
+from time import time
+from fastapi import FastAPI, Request
+
+app = FastAPI()
 
 app = FastAPI()
 app.include_router(api_router)
 
+
+@app.middleware("http")
+async def add_timing_middleware(request: Request, call_next):
+    start = time()
+    response = await call_next(request)
+    duration = round((time() - start) * 1000, 2)
+    print(f"{request.method} {request.url.path} took {duration} ms")
+    response.headers["X-Process-Time-ms"] = str(duration)
+    return response
 
 @app.get("/")
 def read_root():
