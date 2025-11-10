@@ -1,12 +1,14 @@
 from typing import Union
 from src.db.mongo import db
 from src.api.routes import router as api_router
+from conf.logging_config import Logger
 
 from time import time
 from fastapi import FastAPI, Request
 
 app = FastAPI()
 
+log = Logger('./logs/fastapi/app.log').logger
 app = FastAPI()
 app.include_router(api_router)
 

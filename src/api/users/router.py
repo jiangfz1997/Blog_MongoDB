@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from src.api.users.schemas import UserCreate, UserResponse
 from src.api.users.service import create_user, get_user_by_email
-
+from src.main import logger
 
 router = APIRouter(
     prefix="/users",
@@ -31,6 +31,7 @@ async def register_user(user: UserCreate):
             detail="Email already registered",
         )
     created_user = await create_user(user)
+    logger.info("Root endpoint called")
     return created_user
 
 
