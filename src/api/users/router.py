@@ -1,16 +1,20 @@
 from fastapi import APIRouter, HTTPException, status
-from src.api.users.schemas import UserCreate, UserResponse
-from src.api.users.service import create_user, get_user_by_email
-from src.main import logger
+from src.api.users.schemas import UserCreate, UserResponse, UserLogin
+from src.api.users.service import  get_user_by_email, create_user, authenticate_user
+from src.logger import get_logger
+from fastapi.encoders import jsonable_encoder
 
+logger = get_logger(__name__)
 router = APIRouter(
     prefix="/users",
     tags=["users"],
 )
-
-
+from bson import ObjectId
+from src.auth.auth import create_access_token, create_refresh_token
+from fastapi import APIRouter, Response, status
+from fastapi.responses import JSONResponse
 @router.post(
-    "/",
+    "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
@@ -18,22 +22,44 @@ router = APIRouter(
 )
 async def register_user(user: UserCreate):
     """
-    Register a new user
-    - **username**: The user's unique name.
-    - **email**: The user's email address.
-    - **password**: The user's plain-text password.
-    - Returns: The created user object.
+    Register a new user and set JWT tokens in cookies.
+    - **user**: UserCreate object containing username, email, and password.
+    - Returns: UserResponse object of the created user.
     """
-    existing_user = await get_user_by_email(user.email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
-    created_user = await create_user(user)
-    logger.info("Root endpoint called")
-    return created_user
+    try:
+        created, access_token, refresh_token = await create_user(user)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
+    resp_body = {"user": created}
+    response = JSONResponse(status_code=status.HTTP_201_CREATED, content=jsonable_encoder(resp_body))
+    response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite="lax")
+    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False, samesite="lax")
+    return response
+
+@router.post(
+    "/login",
+    response_model=UserResponse,
+    summary="User login",
+    description="Authenticate user and return JWT tokens in cookies."
+)
+async def login_user(credentials: UserLogin):
+    """
+    Authenticate user and set JWT tokens in cookies.
+    - **credentials**: UserLogin object containing email and password.
+    - Returns: UserResponse object of the authenticated user.
+    """
+    user = await authenticate_user(credentials.email, credentials.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    # generate tokens
+    payload = {"sub": user["id"], "email": user["email"]}
+    access = create_access_token(payload)
+    refresh = create_refresh_token(payload)
+    resp = JSONResponse(content=jsonable_encoder({"user": user}))
+    resp.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax")
+    resp.set_cookie("refresh_token", refresh, httponly=True, secure=False, samesite="lax")
+    return resp
 
 @router.get(
     "/email/{email}",

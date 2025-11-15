@@ -7,6 +7,9 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6, description="Password with at least 6 characters")
 
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 
 # Response schema for user data
 class UserResponse(BaseModel):

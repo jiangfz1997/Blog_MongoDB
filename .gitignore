@@ -1,4 +1,10 @@
+logs/
 mongo_data/
 .idea/
 .vscode/
 grafana_data/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+

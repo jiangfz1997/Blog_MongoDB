@@ -1,17 +1,26 @@
 from typing import Union
 from src.db.mongo import db
 from src.api.routes import router as api_router
-from conf.logging_config import Logger
-
+from src.logger import logger,setup_logging
+from fastapi.middleware.cors import CORSMiddleware
 from time import time
 from fastapi import FastAPI, Request
 
 app = FastAPI()
 
-log = Logger('./logs/fastapi/app.log').logger
-app = FastAPI()
+setup_logging()
+logger.info("Starting app")
 app.include_router(api_router)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173"   # <- Vite dev server 的 origin，生产环境改成真实域名
+    ],
+    allow_credentials=True,      # <- 允许 cookie / Authorization header 等被发送
+    allow_methods=["*"],         # <- 允许的 HTTP 方法，'*' 表示所有
+    allow_headers=["*"],         # <- 允许的请求头
+)
 
 @app.middleware("http")
 async def add_timing_middleware(request: Request, call_next):
