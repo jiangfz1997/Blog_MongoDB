@@ -10,7 +10,7 @@ It includes MongoDB, Prometheus, Grafana, and Node/MongoDB exporters — all orc
 ### Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/Blog_MongoDB.git
+git clone https://github.com/jiangfz1997/Blog_MongoDB.git
 cd Blog_MongoDB
 ```
 
