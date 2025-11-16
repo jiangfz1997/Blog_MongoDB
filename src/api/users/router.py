@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
-from src.api.users.schemas import UserCreate, UserResponse, UserLogin
-from src.api.users.service import  get_user_by_email, create_user, authenticate_user
+from fastapi import APIRouter, HTTPException, status, Depends
+from src.api.users.schemas import *
+from src.api.users.service import *
 from src.logger import get_logger
 from fastapi.encoders import jsonable_encoder
+from src.api.users.schemas import PasswordChange
 
 logger = get_logger(__name__)
 router = APIRouter(
@@ -81,3 +82,15 @@ async def get_user_by_email_api(email: str):
             detail="User not found."
         )
     return user
+
+#change password
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Change password",
+    description="Change password after login",
+)
+async def change_password_endpoint(data: PasswordChange, claims: dict = Depends(auth.verify_access_token)):
+    user_id = claims["sub"]
+    await change_password(user_id, data.old_password, data.new_password)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

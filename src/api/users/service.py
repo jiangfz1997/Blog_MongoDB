@@ -7,6 +7,9 @@ from src.api.users.utils import hash_password, verify_password
 from src.logger import get_logger
 from src.auth import auth
 from typing import Tuple
+from bson import ObjectId
+from fastapi import HTTPException, status
+from src.db.mongo import db
 logger = get_logger(__name__)
 
 async def create_user(user_in: UserCreate) -> Tuple[dict, str, str]:
@@ -32,6 +35,7 @@ async def get_user_by_email(email: str):
         del user["password"]
     return user
 
+# check password
 async def authenticate_user(email: str, password: str):
     user_doc = await repository.find_by_email(db, email)
     if not user_doc:
@@ -46,3 +50,19 @@ async def authenticate_user(email: str, password: str):
         "avatarUrl": user_doc.get("avatarUrl", "")
     }
     return user
+
+# change password
+async def change_password(user_id: str, old_password: str, new_password: str) -> None:
+    user_doc = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user_doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # check old pw
+    if not verify_password(old_password, user_doc["password"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Old password is incorrect")
+
+    new_hash = hash_password(new_password)
+
+    ok = await repository.update_password_hash(db, ObjectId(user_id), new_hash)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update password")
