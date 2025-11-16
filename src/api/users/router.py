@@ -85,7 +85,7 @@ async def get_user_by_email_api(email: str):
 
 #change password
 @router.post(
-    "/change-password",
+    "/password",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Change password",
     description="Change password after login",
@@ -94,3 +94,21 @@ async def change_password_endpoint(data: PasswordChange, claims: dict = Depends(
     user_id = claims["sub"]
     await change_password(user_id, data.old_password, data.new_password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+#log out
+@router.post(
+    "/logout",
+    summary="Logout user",
+    description="Clear JWT tokens from cookies to logout."
+)
+async def logout_user():
+    """
+    Remove access and refresh tokens from cookies.
+    """
+    response = JSONResponse(
+        content={"message": "Successfully logged out"},
+        status_code=200
+    )
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
