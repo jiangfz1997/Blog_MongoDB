@@ -5,7 +5,7 @@ from src.logger import get_logger
 from fastapi.encoders import jsonable_encoder
 from src.api.users.schemas import PasswordChange
 
-logger = get_logger(__name__)
+logger = get_logger()
 router = APIRouter(
     prefix="/users",
     tags=["users"],
@@ -53,6 +53,7 @@ async def login_user(credentials: UserLogin):
     user = await authenticate_user(credentials.email, credentials.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    logger.info(f"login successful { user["id"]}")
     # generate tokens
     payload = {"sub": user["id"], "email": user["email"]}
     access = create_access_token(payload)
