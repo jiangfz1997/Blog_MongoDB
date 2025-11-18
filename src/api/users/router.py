@@ -12,8 +12,9 @@ router = APIRouter(
 )
 from bson import ObjectId
 from src.auth.auth import create_access_token, create_refresh_token
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, status, Path
 from fastapi.responses import JSONResponse
+
 @router.post(
     "/register",
     response_model=UserResponse,
@@ -83,6 +84,20 @@ async def get_user_by_email_api(email: str):
             detail="User not found."
         )
     return user
+
+@router.get(
+    "/{user_id}/public",
+    response_model=UsernameResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get public user info by ID",
+    description="Return public user info (currently only username) by user ID.",
+)
+async def get_user_public_endpoint(
+    user_id: str = Path(..., min_length=24, max_length=24, description="User ID (MongoDB ObjectId string)"),
+):
+    logger.info("Get public user info, user_id=%s", user_id)
+    return await get_user_public(user_id)
+
 
 #change password
 @router.post(

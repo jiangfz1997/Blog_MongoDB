@@ -79,3 +79,48 @@ async def list_blogs_by_author(
 
 async def count_blogs_by_author(db: AsyncIOMotorDatabase, author_id: str) -> int:
     return await db.blogs.count_documents({"author_id": author_id})
+
+
+async def search_blogs_by_title(
+    db: AsyncIOMotorDatabase,
+    keyword: str,
+    skip: int = 0,
+    limit: int = 10,
+) -> List[dict]:
+    """
+    搜索标题包含关键字的博客（大小写不敏感）。
+    返回 serialize 后的博客列表。
+    """
+    # 构造大小写不敏感的搜索条件
+    query = {
+        "title": {
+            "$regex": keyword,
+            "$options": "i"   # i = ignore case
+        }
+    }
+
+    cursor = (
+        db.blogs
+        .find(query)
+        .sort("created_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
+
+    items: List[dict] = []
+    async for doc in cursor:
+        items.append(_serialize(doc))
+    return items
+
+
+async def count_blogs_by_title(db: AsyncIOMotorDatabase,keyword: str,) -> int:
+    """
+    返回匹配标题关键字的博客总数。
+    """
+    query = {
+        "title": {
+            "$regex": keyword,
+            "$options": "i"
+        }
+    }
+    return await db.blogs.count_documents(query)

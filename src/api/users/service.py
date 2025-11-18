@@ -2,7 +2,7 @@
 import asyncio
 from src.db.mongo import db
 from . import repository
-from src.api.users.schemas import UserCreate
+from src.api.users.schemas import *
 from src.api.users.utils import hash_password, verify_password
 from src.logger import get_logger
 from src.auth import auth
@@ -14,9 +14,14 @@ logger = get_logger(__name__)
 
 async def create_user(user_in: UserCreate) -> Tuple[dict, str, str]:
 
-    existing = await asyncio.wait_for(repository.find_by_email(db, user_in.email), timeout=5)
-    if existing:
+    existing_email = await asyncio.wait_for(repository.find_by_email(db, user_in.email), timeout=5)
+    if existing_email:
         raise ValueError("Email already registered")
+
+    existing_username = await asyncio.wait_for(repository.find_by_username(db, user_in.username), timeout=5)
+    if existing_username:
+        raise ValueError("Username already registered")
+
 
     hashed = hash_password(user_in.password)
     user_doc = {"username": user_in.username, "email": user_in.email, "password": hashed}
@@ -34,6 +39,19 @@ async def get_user_by_email(email: str):
         user["id"] = str(user["_id"])
         del user["password"]
     return user
+
+async def get_user_public(user_id: str) -> UsernameResponse:
+    """
+    use user_id return username
+    """
+    user_doc = await repository.find_by_id(db, user_id)
+    if not user_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    return UsernameResponse(username=user_doc["username"])
 
 # check password
 async def authenticate_user(email: str, password: str):

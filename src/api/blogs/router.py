@@ -12,8 +12,6 @@ from fastapi import APIRouter, Depends, status, Path, Query
 from src.api.blogs import service
 from src.auth import auth
 
-router = APIRouter(prefix="/blogs", tags=["blogs"])
-
 @router.post(
     "",
     response_model=BlogResponse,

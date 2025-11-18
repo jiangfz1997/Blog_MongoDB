@@ -21,3 +21,9 @@ class UserResponse(BaseModel):
 class PasswordChange(BaseModel):
     old_password: str = Field(..., min_length=6, description="Password with at least 6 characters")
     new_password: str = Field(..., min_length=6, description="Password with at least 6 characters")
+
+class UsernameResponse(BaseModel):
+    """
+    only username
+    """
+    username: str = Field(..., description="Username of the user")
