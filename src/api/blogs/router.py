@@ -24,14 +24,14 @@ async def create_blog_endpoint(
     claims: dict = Depends(auth.verify_access_token),
 ):
     author_id = claims["sub"]
-    logger.info("Created the blog, author_id is", author_id)
+    logger.info("Created the blog, author_id is=%s", author_id)
     return await service.create_blog(author_id, payload)
 
 @router.patch(
     "/{blog_id}",
     response_model=BlogResponse,
     summary="Update blog",
-    description="Partially update a blog's title/content. Only the author can update."
+    description="Partially update a blog. Only the author can update."
 )
 async def update_blog_endpoint(
     blog_id: str,
@@ -40,7 +40,7 @@ async def update_blog_endpoint(
 ):
     author_id = claims["sub"]
     update_fields = payload.dict(exclude_unset=True)
-    logger.info("Updated the blog, blog_id is", blog_id)
+    logger.info("Updated the blog, blog_id is=%s", blog_id)
     return await service.edit_blog(blog_id, author_id, update_fields)
 
 @router.delete(
@@ -55,7 +55,7 @@ async def delete_blog_endpoint(
 ):
     author_id = claims["sub"]
     await service.remove_blog(blog_id, author_id)
-    logger.info("Deleted the blog, blog_id is", blog_id)
+    logger.info("Deleted the blog, blog_id is=%s", blog_id)
     return None
 
 #get blog by blog_id
@@ -69,7 +69,7 @@ async def delete_blog_endpoint(
 async def get_blog_by_id_endpoint(
     blog_id: str = Path(..., min_length=24, max_length=24, description="MongoDB ObjectId string")
 ):
-    logger.info("list the blog, blog_id is", blog_id)
+    logger.info("list the blog, blog_id is=%s", blog_id)
     return await service.get_blog(blog_id)
 
 @router.get(
@@ -98,7 +98,7 @@ async def list_my_blogs_endpoint(
     claims: dict = Depends(auth.verify_access_token),
 ):
     author_id = claims["sub"]
-    logger.info("list my blog, author_id is",author_id)
+    logger.info("list my blog, author_id is=%s",author_id)
     return await service.list_author_blogs(author_id, page, size)
 
 #get other people blog
@@ -112,6 +112,33 @@ async def list_blogs_by_author_endpoint(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=50),
 ):
-    logger.info("list others blog, author_id is", author_id)
+    logger.info("list others blog, author_id is=%s", author_id)
     return await service.list_author_blogs(author_id, page, size)
 
+# hottest blog tag
+@router.get(
+    "/tags/hottest",
+    response_model=List[HottestTagResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get hottest tags",
+    description="Get the hottest tags ranked by the number of blogs having each tag.",
+)
+async def get_hottest_tags_endpoint(
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of tags to return"),
+):
+    logger.info("Get hottest tags, limit=%s", limit)
+    return await service.get_hottest_tags(limit)
+
+# hottest view count blog
+@router.get(
+    "/views/hottest",
+    response_model=List[BlogViewRankResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get blogs ranked by view count",
+    description="Get the list of blogs with highest view counts, in descending order.",
+)
+async def get_hottest_blogs_by_views_endpoint(
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of blogs to return"),
+):
+    logger.info("Get hottest blogs by views, limit=%s", limit)
+    return await service.list_hottest_blogs_by_views(limit)
