@@ -9,3 +9,11 @@ client = AsyncIOMotorClient(
     socketTimeoutMS=10000
 )
 db = client["blog_db"]
+
+async def init_indexes():
+    # blog index (author_id+created_at)
+    await db.blogs.create_index(
+        [("author_id", 1), ("created_at", -1)],
+        name="idx_author_created"
+    )
+

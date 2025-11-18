@@ -1,5 +1,5 @@
 from typing import Union
-from src.db.mongo import db
+from src.db.mongo import db, init_indexes
 from src.api.routes import router as api_router
 from src.logger import logger,setup_logging
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,12 +22,18 @@ app.add_middleware(
     allow_headers=["*"],         # <- 允许的请求头
 )
 
+@app.on_event("startup")
+async def on_startup():
+    logger.info("Initializing MongoDB indexes...")
+    await init_indexes()
+    logger.info("MongoDB indexes initialized")
+
 @app.middleware("http")
 async def add_timing_middleware(request: Request, call_next):
     start = time()
     response = await call_next(request)
     duration = round((time() - start) * 1000, 2)
-    print(f"{request.method} {request.url.path} took {duration} ms")
+    logger.info(f"{request.method} {request.url.path} took {duration} ms")
     response.headers["X-Process-Time-ms"] = str(duration)
     return response
 

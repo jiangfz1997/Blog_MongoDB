@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
-from src.api.users.schemas import UserCreate, UserResponse, UserLogin
-from src.api.users.service import  get_user_by_email, create_user, authenticate_user
+from fastapi import APIRouter, HTTPException, status, Depends
+from src.api.users.schemas import *
+from src.api.users.service import *
 from src.logger import get_logger
 from fastapi.encoders import jsonable_encoder
+from src.api.users.schemas import PasswordChange
 
-logger = get_logger(__name__)
+logger = get_logger()
 router = APIRouter(
     prefix="/users",
     tags=["users"],
@@ -52,6 +53,7 @@ async def login_user(credentials: UserLogin):
     user = await authenticate_user(credentials.email, credentials.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    logger.info(f"login successful { user["id"]}")
     # generate tokens
     payload = {"sub": user["id"], "email": user["email"]}
     access = create_access_token(payload)
@@ -81,3 +83,33 @@ async def get_user_by_email_api(email: str):
             detail="User not found."
         )
     return user
+
+#change password
+@router.post(
+    "/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Change password",
+    description="Change password after login",
+)
+async def change_password_endpoint(data: PasswordChange, claims: dict = Depends(auth.verify_access_token)):
+    user_id = claims["sub"]
+    await change_password(user_id, data.old_password, data.new_password)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+#log out
+@router.post(
+    "/logout",
+    summary="Logout user",
+    description="Clear JWT tokens from cookies to logout."
+)
+async def logout_user():
+    """
+    Remove access and refresh tokens from cookies.
+    """
+    response = JSONResponse(
+        content={"message": "Successfully logged out"},
+        status_code=200
+    )
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
