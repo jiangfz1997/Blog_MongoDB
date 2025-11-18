@@ -1,4 +1,3 @@
-# src/api/blogs/service.py
 import asyncio
 from datetime import datetime
 from src.db.mongo import db

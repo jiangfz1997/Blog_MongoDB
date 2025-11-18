@@ -1,18 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from src.api.blogs.schemas import *
 from src.logger import get_logger
-from fastapi.encoders import jsonable_encoder
 
 logger = get_logger()
 router = APIRouter(
     prefix="/blogs",
     tags=["blogs"],
 )
-from bson import ObjectId
-from src.auth.auth import create_access_token, create_refresh_token
-from fastapi import APIRouter, Response, status
-from fastapi.responses import JSONResponse
-# src/api/blogs/router.py
+
 from fastapi import APIRouter, Depends, status, Path, Query
 from src.api.blogs import service
 from src.auth import auth

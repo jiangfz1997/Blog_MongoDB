@@ -11,6 +11,7 @@ services:
       - "9100:9100"
     volumes:
       - ./node-exporter-install.sh:/node-exporter-install.sh
+      - ./mongo-data:/data/db
     command: ["/bin/bash", "/node-exporter-install.sh"]
 
   mongo-exporter:
