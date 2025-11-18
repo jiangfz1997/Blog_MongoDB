@@ -52,54 +52,48 @@ async def _build_blog_list_page(
         items=items,
     )
 
-async def search_user_with_blogs(
-    username: str,
-    page: int,
-    size: int,
-) -> SearchUserResult:
+async def search_user_with_blogs(username: str,) -> SearchUserResult:
     """
     搜索用户名：
-    - 如果找到该用户，返回用户预览 + 该用户的博客分页列表
-    - 如果找不到，返回 user=None, blogs=空分页
+    - 如果找到该用户，返回用户预览
     """
 
     user_doc = await user_repository.find_by_username(db, username)
 
     if not user_doc:
         # 用户名不存在
-        empty_page = BlogListPage(total=0, page=page, size=size, items=[])
-        return SearchUserResult(user=None, blogs=empty_page)
+        return SearchUserResult(user=None)
 
     # 用户预览信息
-    user_preview = SearchUserPreview(username=user_doc["username"])
+    user_preview = SearchUserPreview(username=user_doc["username"],user_id=str(user_doc["_id"]))
 
-    # 查询该用户的博客
-    #author_id = user_doc["id"]
-    author_id = str(user_doc["_id"])
-    skip = (page - 1) * size
-
-    total = await blog_repository.count_blogs_by_author(db, author_id)
-    if total == 0:
-        empty_page = BlogListPage(total=0, page=page, size=size, items=[])
-        return SearchUserResult(user=user_preview, blogs=empty_page)
-
-    blog_docs = await blog_repository.list_blogs_by_author(
-        db=db,
-        author_id=author_id,
-        limit=size,
-        skip=skip,
-    )
-
-    blogs_page = await _build_blog_list_page(
-        blog_docs=blog_docs,
-        total=total,
-        page=page,
-        size=size,
-    )
+    # # 查询该用户的博客
+    # #author_id = user_doc["id"]
+    # author_id = str(user_doc["_id"])
+    # skip = (page - 1) * size
+    #
+    # total = await blog_repository.count_blogs_by_author(db, author_id)
+    # if total == 0:
+    #     empty_page = BlogListPage(total=0, page=page, size=size, items=[])
+    #     return SearchUserResult(user=user_preview, blogs=empty_page)
+    #
+    # blog_docs = await blog_repository.list_blogs_by_author(
+    #     db=db,
+    #     author_id=author_id,
+    #     limit=size,
+    #     skip=skip,
+    # )
+    #
+    # blogs_page = await _build_blog_list_page(
+    #     blog_docs=blog_docs,
+    #     total=total,
+    #     page=page,
+    #     size=size,
+    # )
 
     return SearchUserResult(
         user=user_preview,
-        blogs=blogs_page,
+        #blogs=blogs_page,
     )
 
 

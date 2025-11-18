@@ -23,19 +23,20 @@ from fastapi import APIRouter, Depends, status, Path, Query
 )
 async def search_user_endpoint(
     username: str = Query(..., min_length=1, description="Exact username to search"),
-    page: int = Query(1, ge=1, description="Page number (1-based) for the user's blogs"),
-    size: int = Query(10, ge=1, le=50, description="Page size for the user's blogs"),
+    #page: int = Query(1, ge=1, description="Page number (1-based) for the user's blogs"),
+    #size: int = Query(10, ge=1, le=50, description="Page size for the user's blogs"),
 ):
     """
     按用户名搜索：
-    - 如果用户存在：返回 user + 其博客分页列表
-    - 如果用户不存在：user = null, blogs.total = 0, items = []
+    - 如果用户存在：返回 username and userid
+    - 如果用户不存在：user = null
     """
-    logger.info("Search user by username, username=%s, page=%s, size=%s", username, page, size)
+    #logger.info("Search user by username, username=%s, page=%s, size=%s", username, page, size)
+    logger.info("Search user by username, username=%s", username)
     result = await search_service.search_user_with_blogs(
         username=username,
-        page=page,
-        size=size,
+        #page=page,
+        #size=size,
     )
     return result
 

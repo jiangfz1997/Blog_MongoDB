@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class SearchUserPreview(BaseModel):
     username: str = Field(..., description="Unique username of the user")
+    user_id: str
 
 class SearchBlogPreview(BaseModel):
     blog_id: str = Field(..., description="Public identifier of the blog (used for navigation)")
@@ -30,7 +31,7 @@ class BlogListPage(BaseModel):
 # search username
 class SearchUserResult(BaseModel):
     user: Optional[SearchUserPreview] = None
-    blogs: BlogListPage
+
 
 #search keyword
 class SearchBlogsResult(BaseModel):
