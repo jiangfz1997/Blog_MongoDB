@@ -3,22 +3,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
 async def find_by_email(db: AsyncIOMotorDatabase, email: str) -> Optional[dict]:
-    doc = await db.users.find_one({"email": email})
-    if not doc:
-        return None
-    doc["id"] = str(doc["_id"])
-    doc.pop("_id", None)
-    return doc
-    #return await db.users.find_one({"email": email})
+    return await db.users.find_one({"email": email})
 
 async def find_by_username(db: AsyncIOMotorDatabase, username: str) -> Optional[dict]:
-    doc = await db.users.find_one({"username": username})
-    if not doc:
-        return None
-    doc["id"] = str(doc["_id"])
-    doc.pop("_id", None)
-    return doc
-    #return await db.users.find_one({"username": username})
+    return await db.users.find_one({"username": username})
 
 async def find_by_id(db: AsyncIOMotorDatabase, user_id: str) -> Optional[dict]:
     try:

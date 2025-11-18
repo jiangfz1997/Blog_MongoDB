@@ -28,3 +28,10 @@ class BlogResponse(BaseModel):
     author_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+class BlogPreviewResponse(BaseModel):
+    id: str = Field(..., description="Blog ID")
+    title: str = Field(..., description="Blog title")
+    author_id: str = Field(..., description="Author user ID")
+    created_at: datetime = Field(..., description="Creation time")
+    updated_at: datetime | None = Field(None, description="Last update time")

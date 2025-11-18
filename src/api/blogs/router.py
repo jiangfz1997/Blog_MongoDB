@@ -72,6 +72,19 @@ async def get_blog_by_id_endpoint(
     logger.info("list the blog, blog_id is", blog_id)
     return await service.get_blog(blog_id)
 
+@router.get(
+    "/{blog_id}/preview",
+    response_model=BlogPreviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get blog preview by ID",
+    description="Fetch blog meta info (without content) by blog ID.",
+)
+async def get_blog_preview_endpoint(
+    blog_id: str = Path(..., min_length=24, max_length=24, description="MongoDB ObjectId string"),
+):
+    logger.info("get blog preview, blog_id is %s", blog_id)
+    return await service.get_blog_preview(blog_id)
+
 
 # get my blog
 @router.get(

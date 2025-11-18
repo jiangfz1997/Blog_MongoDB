@@ -74,7 +74,8 @@ async def search_user_with_blogs(
     user_preview = SearchUserPreview(username=user_doc["username"])
 
     # 查询该用户的博客
-    author_id = user_doc["id"]
+    #author_id = user_doc["id"]
+    author_id = str(user_doc["_id"])
     skip = (page - 1) * size
 
     total = await blog_repository.count_blogs_by_author(db, author_id)

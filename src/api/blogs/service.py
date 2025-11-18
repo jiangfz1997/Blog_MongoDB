@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 from src.db.mongo import db
 from . import repository
-from src.api.blogs.schemas import BlogCreate
+from src.api.blogs.schemas import *
 from fastapi import HTTPException, status
 from typing import Dict, Any, Optional
 
@@ -71,6 +71,27 @@ async def get_blog(blog_id: str) -> dict:
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blog not found")
     return doc
+
+async def get_blog_preview(blog_id: str) -> BlogPreviewResponse:
+    """
+    get blog without detail content
+    """
+    doc = await repository.find_blog_by_id(db, blog_id)
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Blog not found",
+        )
+
+    return BlogPreviewResponse(
+        id=doc["id"],
+        title=doc["title"],
+        author_id=doc["author_id"],
+        created_at=doc["created_at"],
+        updated_at=doc.get("updated_at"),
+    )
+
+
 
 #get blog by author
 async def list_author_blogs(author_id: str, page: int = 1, size: int = 10) -> Dict[str, Any]:
