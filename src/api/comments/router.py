@@ -32,48 +32,120 @@ async def create_comment_endpoint(
     created = await comment_service.create_comment(author_id, payload)
     return created
 
-
+# delete comments
 @router.delete(
     "/{comment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete comment and its replies",
+    summary="Delete comment",
     description=(
-        "Delete a comment and all its nested replies. "
-        "Blog author can delete any comment under their blog. "
-        "Comment author can delete their own comments."
+        "Delete a comment. "
+        "If the comment is a top-level comment, the entire thread is deleted. "
+        "If it is a reply, only that reply is deleted. "
+        "Blog author can delete any comment, "
+        "and comment author can delete their own comments."
     ),
 )
 async def delete_comment_endpoint(
-    comment_id: str = Path(..., min_length=24, max_length=24, description="Comment ID (MongoDB ObjectId string)"),
-    blog_id: str = Query(..., min_length=24, max_length=24, description="Blog ID this comment belongs to"),
+    comment_id: str = Path(..., min_length=24, max_length=24),
+    blog_id: str = Query(..., min_length=24, max_length=24),
     claims: dict = Depends(auth.verify_access_token),
 ):
     author_id = claims["sub"]
     logger.info(
-        "Delete comment request, comment_id is %s, blog_id is %s, requester is %s",
+        "Delete comment request, comment_id=%s, blog_id=%s, requester=%s",
         comment_id,
         blog_id,
         author_id,
     )
-    await comment_service.remove_comment(comment_id=comment_id, blog_id=blog_id, author_id=author_id)
-    logger.info("Deleted comment, comment_id is %s", comment_id)
+    await comment_service.remove_comment(
+        comment_id=comment_id,
+        blog_id=blog_id,
+        author_id=author_id,
+    )
+    logger.info("Deleted comment, comment_id=%s", comment_id)
     return None
 
 
+
+# get comments and replies
 @router.get(
     "/blog/{blog_id}",
-    response_model=List[CommentResponse],
+    response_model=CommentListResponse,
     status_code=status.HTTP_200_OK,
-    summary="List comments for a blog",
+    summary="List comments for a blog (paginated)",
     description=(
-        "Fetch all comments and nested replies for a given blog. "
-        "Returns a tree structure: top-level comments each with a replies list."
+        "List top-level comments with pagination, "
+        "each including one page of replies. "
+        "Use page/size for top-level comments, "
+        "and replies_page/replies_size for replies pagination."
     ),
 )
 async def list_blog_comments_endpoint(
-    blog_id: str = Path(..., min_length=24, max_length=24, description="Blog ID (MongoDB ObjectId string)"),
+    blog_id: str = Path(..., min_length=24, max_length=24),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=50),
+    replies_page: int = Query(1, ge=1),
+    replies_size: int = Query(5, ge=1, le=50),
 ):
-    logger.info("List comments for blog, blog_id is %s", blog_id)
-    comments = await comment_service.get_comments_for_blog(blog_id)
+    logger.info(
+        "List comments for blog, blog_id=%s (page=%s,size=%s,replies_page=%s,replies_size=%s)",
+        blog_id, page, size, replies_page, replies_size,
+    )
+
+    comments = await comment_service.get_comments_for_blog(
+        blog_id=blog_id,
+        page=page,
+        size=size,
+        replies_page=replies_page,
+        replies_size=replies_size,
+    )
     return comments
+
+
+
+
+
+# @router.delete(
+#     "/{comment_id}",
+#     status_code=status.HTTP_204_NO_CONTENT,
+#     summary="Delete comment and its replies",
+#     description=(
+#         "Delete a comment and all its nested replies. "
+#         "Blog author can delete any comment under their blog. "
+#         "Comment author can delete their own comments."
+#     ),
+# )
+# async def delete_comment_endpoint(
+#     comment_id: str = Path(..., min_length=24, max_length=24, description="Comment ID (MongoDB ObjectId string)"),
+#     blog_id: str = Query(..., min_length=24, max_length=24, description="Blog ID this comment belongs to"),
+#     claims: dict = Depends(auth.verify_access_token),
+# ):
+#     author_id = claims["sub"]
+#     logger.info(
+#         "Delete comment request, comment_id is %s, blog_id is %s, requester is %s",
+#         comment_id,
+#         blog_id,
+#         author_id,
+#     )
+#     await comment_service.remove_comment(comment_id=comment_id, blog_id=blog_id, author_id=author_id)
+#     logger.info("Deleted comment, comment_id is %s", comment_id)
+#     return None
+#
+#
+# @router.get(
+#     "/blog/{blog_id}",
+#     response_model=List[CommentResponse],
+#     status_code=status.HTTP_200_OK,
+#     summary="List comments for a blog",
+#     description=(
+#         "Fetch all comments and nested replies for a given blog. "
+#         "Returns a tree structure: top-level comments each with a replies list."
+#     ),
+# )
+# async def list_blog_comments_endpoint(
+#     blog_id: str = Path(..., min_length=24, max_length=24, description="Blog ID (MongoDB ObjectId string)"),
+# ):
+#     logger.info("List comments for blog, blog_id is %s", blog_id)
+#     comments = await comment_service.get_comments_for_blog(blog_id)
+#     return comments
 
