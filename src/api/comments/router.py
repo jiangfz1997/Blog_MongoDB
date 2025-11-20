@@ -101,6 +101,30 @@ async def list_blog_comments_endpoint(
     )
     return comments
 
+# get replies list of specific root comment
+@router.get(
+    "/root/{root_id}/replies",
+    response_model=ReplyListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List replies for a root comment (paginated)",
+    description=(
+        "Fetch paginated replies under a specific root comment. "
+        "Use this endpoint when clicking 'Load more replies' "
+        "for a particular root comment."
+    ),
+)
+async def list_replies_for_root_endpoint(
+    root_id: str = Path(..., min_length=24, max_length=24, description="Root comment ID"),
+    page: int = Query(1, ge=1, description="Replies page number (1-based)"),
+    size: int = Query(5, ge=1, le=50, description="Replies per page"),
+):
+    logger.info(
+        "List replies for root comment, root_id=%s (page=%s,size=%s)",
+        root_id,
+        page,
+        size,
+    )
+    return await comment_service.get_replies_for_root(root_id=root_id, page=page, size=size)
 
 
 

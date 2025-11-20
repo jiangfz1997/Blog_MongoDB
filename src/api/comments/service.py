@@ -276,3 +276,63 @@ async def get_comments_for_blog(
         total=total,
         has_next=(page * size < total),
     )
+
+# get replies list of oen specific root comment
+async def get_replies_for_root(root_id: str, page: int, size: int) -> ReplyListResponse:
+
+    root = await comment_repository.find_comment_by_id(db, root_id)
+    if not root:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Root comment not found",
+        )
+
+    if not root.get("is_root", False):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The given comment is not a root comment",
+        )
+
+    page = max(page, 1)
+    size = max(min(size, 50), 1)
+    skip = (page - 1) * size
+
+    replies = await comment_repository.list_replies_by_root(
+        db, root_id, skip=skip, limit=size
+    )
+    total = await comment_repository.count_replies_by_root(db, root_id)
+
+    if not replies:
+        return ReplyListResponse(
+            items=[],
+            page=page,
+            size=size,
+            total=0,
+            has_next=False,
+        )
+
+    author_ids = {rp["author_id"] for rp in replies}
+    id_to_username = {}
+    for i in author_ids:
+        users = await user_service.get_user_public(i)
+        id_to_username[i] = users.username
+    logger.info("id_to_username=%s", id_to_username)
+
+
+    formatted_replies: List[CommentResponse] = []
+    for rp in replies:
+        reply_author_username = id_to_username.get(rp["author_id"], "Unknown")
+        formatted_replies.append(
+            CommentResponse(
+                **rp,
+                author_username=reply_author_username,
+            )
+        )
+
+    return ReplyListResponse(
+        items=formatted_replies,
+        page=page,
+        size=size,
+        total=total,
+        has_next=(page * size < total),
+    )

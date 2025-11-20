@@ -45,3 +45,11 @@ class CommentListResponse(BaseModel):
     size: int = Field(..., description="Number of root comments per page")
     total: int = Field(..., description="Total number of root comments for this blog")
     has_next: bool = Field(..., description="Whether there are more root comment pages")
+
+# replies list of specific comment
+class ReplyListResponse(BaseModel):
+    items: List[CommentResponse] = Field(...,description="Current page of replies under the given root comment",)
+    page: int = Field(..., description="Current replies page number (1-based)")
+    size: int = Field(..., description="Number of replies per page")
+    total: int = Field(..., description="Total number of replies under this root comment")
+    has_next: bool = Field(..., description="Whether there are more reply pages")
