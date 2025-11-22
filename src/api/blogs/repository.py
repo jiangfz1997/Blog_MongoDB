@@ -104,10 +104,9 @@ async def search_blogs_by_title(
     limit: int = 10,
 ) -> List[dict]:
     """
-    搜索标题包含关键字的博客（大小写不敏感）。
-    返回 serialize 后的博客列表。
+    Search blogs whose titles contain the keyword (case-insensitive).
+    Return the list of serialized blogs.
     """
-    # 构造大小写不敏感的搜索条件
     query = {
         "title": {
             "$regex": keyword,
@@ -131,7 +130,7 @@ async def search_blogs_by_title(
 
 async def count_blogs_by_title(db: AsyncIOMotorDatabase,keyword: str,) -> int:
     """
-    返回匹配标题关键字的博客总数。
+    Return the total number of blogs whose titles match the keyword.
     """
     query = {
         "title": {
@@ -143,8 +142,8 @@ async def count_blogs_by_title(db: AsyncIOMotorDatabase,keyword: str,) -> int:
 
 async def get_hottest_tags(db: AsyncIOMotorDatabase,limit: int = 10,) -> List[dict]:
     """
-    聚合统计当前最热的标签。
-    以拥有该标签的博客数量为依据，从高到低排序，返回前 limit 个。
+    Aggregate and compute the currently hottest tags.
+    Sort tags by the number of blogs that use them in descending order, and return the top limit tags.
     """
     pipeline = [
         {"$unwind": "$tags"},
@@ -161,7 +160,7 @@ async def get_hottest_tags(db: AsyncIOMotorDatabase,limit: int = 10,) -> List[di
     cursor = db.blogs.aggregate(pipeline)
     results: List[dict] = []
     async for doc in cursor:
-        # 这里先保持原样返回，后面在 service 里转成 HottestTagResponse
+        # Keep result here; it will be converted to HottestTagResponse in the service layer.
         results.append(doc)
     return results
 

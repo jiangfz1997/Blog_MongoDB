@@ -15,11 +15,11 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"   # <- Vite dev server 的 origin，生产环境改成真实域名
+        "http://localhost:5173"
     ],
-    allow_credentials=True,      # <- 允许 cookie / Authorization header 等被发送
-    allow_methods=["*"],         # <- 允许的 HTTP 方法，'*' 表示所有
-    allow_headers=["*"],         # <- 允许的请求头
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")

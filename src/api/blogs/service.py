@@ -112,11 +112,10 @@ async def list_author_blogs(author_id: str, page: int = 1, size: int = 10) -> Di
         "has_next": page * size < total,
     }
 
-# hottest blog tag
+# hottest blog tagSort tags by the number of blogs that use them, in descending order.
 async def get_hottest_tags(limit: int = 10) -> List[HottestTagResponse]:
     """
-    Service: 获取当前最热的标签排行榜。
-    依据：拥有该标签的博客数量，从高到低排序。
+    Sort tags by the number of blogs that use them, in descending order.
     """
     raw = await repository.get_hottest_tags(db, limit=limit)
     return [

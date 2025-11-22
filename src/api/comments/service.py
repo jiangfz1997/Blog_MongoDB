@@ -15,21 +15,19 @@ logger = get_logger()
 
 
 
-# ---------------------------
-# 创建评论（root / reply）
-# ---------------------------
 async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentResponse:
     """
-    创建评论（root 或 reply）。
-    - root：parent_id = None
-    - reply：parent_id = 某条已有评论的 id
-    这里会：
-      1. 处理 is_root / root_id / reply_to_comment_id / reply_to_username
-      2. 查询作者 username，填充 author_username
-      3. 返回 CommentResponse（满足 router 的 response_model 要求）
+    Create a comment (root or reply).
+    Root: parent_id = None
+    Reply: parent_id = the id of an existing comment
+
+    This function will:
+    Set is_root / root_id / reply_to_comment_id / reply_to_username
+    Look up the author's username and fill author_username
+    Return CommentResponse (to satisfy the router's response_model)
     """
 
-    # 1. blog 必须存在
+    # make sure blog exists
     blog = await blog_repository.find_blog_by_id(db, comment_in.blog_id)
     if not blog:
         raise HTTPException(
@@ -37,15 +35,15 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
             detail="Blog not found",
         )
 
-    # 2. 根据 parent_id 判定 root / reply
+    # Determine whether it is a root comment or a reply based on parent_id.
     if comment_in.parent_id is None:
-        # 根评论
+        # root comment
         is_root = True
         root_id = None
         reply_to_comment_id = None
         reply_to_username = None
     else:
-        # 回复评论，先确保 parent 存在
+        # Reply to a comment, ensuring the parent comment exists first.
         parent = await comment_repository.find_comment_by_id(db, comment_in.parent_id)
         if not parent:
             raise HTTPException(
@@ -57,7 +55,6 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
         root_id = parent["root_id"]
         reply_to_comment_id = comment_in.parent_id
 
-        # 方案2：创建时就把被回复者用户名快照下来
         #parent_user = await user_repository.find_by_id(db, parent["author_id"])
         parent_user = await user_service.get_user_public(parent["author_id"])
         if not parent_user:
@@ -65,7 +62,6 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
         else:
             reply_to_username = parent_user.username
 
-    # 3. 写入数据库的文档
     comment_doc = {
         "content": comment_in.content,
         "blog_id": comment_in.blog_id,
@@ -83,37 +79,33 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
         timeout=5,
     )
 
-    # root 评论：如果 root_id 仍是 None，则补成自己的 id
+    # Root comment: if root_id is None, set it to its own id.
     if created["is_root"] and created["root_id"] is None:
         created["root_id"] = created["id"]
 
-    # 4. 这里是关键：查当前作者 username，补上 author_username
+    # fetch the author's username and populate author_username.
     #user = await user_repository.find_by_id(db, author_id)
     user = await user_service.get_user_public(author_id)
     author_username = user.username if user else "Unknown"
 
-    # 5. 返回一个完整的 CommentResponse
     return CommentResponse(
         **created,
         author_username=author_username,
     )
 
 
-# ---------------------------
-# 删除评论
-# ---------------------------
+
 async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
     """
-    新规则下的删除逻辑：
-      - root 评论：删除整条 thread（delete_root_thread）
-      - reply：仅删除该条（delete_single_comment）
+    Root comment: delete the entire thread (delete_root_thread)
+    Reply: delete only that single comment (delete_single_comment)
 
-    权限规则：
-      - 博客作者可以删除该博客下的任何评论
-      - 评论作者只能删除自己的评论
+    Permission rules:
+    - The blog author can delete any comment under the blog
+    - A comment author can delete only their own comment
     """
 
-    # 1. 评论必须存在
+    # make sure comment/reply exists
     existing = await comment_repository.find_comment_by_id(db, comment_id)
     if not existing:
         raise HTTPException(
@@ -121,14 +113,14 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
             detail="Comment not found",
         )
 
-    # 2. 确保评论属于该 blog（避免越权）
+    # the comment belongs to the specified blog (to prevent unauthorized access)
     if existing["blog_id"] != blog_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Comment does not belong to the blog",
         )
 
-    # 3. blog 必须存在
+    # make sure blog exists
     blog = await blog_repository.find_blog_by_id(db, blog_id)
     if not blog:
         raise HTTPException(
@@ -136,18 +128,16 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
             detail="Blog not found",
         )
 
-    # 4. Permission check：博客作者 OR 评论作者
+    # user permission check
     if blog["author_id"] != author_id and existing["author_id"] != author_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden",
         )
 
-    # ---------------------------
-    # 删除逻辑
-    # ---------------------------
+
     if existing["is_root"]:
-        # 删除整条 root thread
+        # delete whole root thread
         deleted_count = await comment_repository.delete_root_thread(db, existing["id"])
         if deleted_count == 0:
             raise HTTPException(
@@ -155,7 +145,7 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
                 detail="Delete failed",
             )
     else:
-        #删除单条 reply
+        #delete single reply
         ok = await comment_repository.delete_single_comment(db, comment_id)
         if not ok:
             raise HTTPException(
@@ -164,9 +154,7 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
             )
 
 
-# ---------------------------
-# 获取某篇 blog 的评论（root 分页 + 每条 root 的 reply 分页）
-# ---------------------------
+
 async def get_comments_for_blog(
     blog_id: str,
     page: int,
@@ -175,10 +163,9 @@ async def get_comments_for_blog(
     replies_size: int = 10,
 ) -> CommentListResponse:
     """
-    获取某篇博客的 root 评论分页，并为每个 root 带上一页 replies。
+    Get paginated root comments for a blog, with one page of replies attached to each root comment.
     """
-
-    # 1. blog 必须存在
+    # ensure blog exists
     blog = await blog_repository.find_blog_by_id(db, blog_id)
     if not blog:
         raise HTTPException(
@@ -186,7 +173,7 @@ async def get_comments_for_blog(
             detail="Blog not found",
         )
 
-    # 2. root 分页
+
     skip = (page - 1) * size
     root_comments = await comment_repository.list_root_comments_by_blog(
         db, blog_id, skip=skip, limit=size
@@ -202,11 +189,11 @@ async def get_comments_for_blog(
             has_next=False,
         )
 
-    # 3. 批量收集所有需要的 author_id，用于查 author_username
+    # Collect all required author_id values in batch for querying author_username.
     author_ids = {c["author_id"] for c in root_comments}
     root_ids = [c["id"] for c in root_comments]
 
-    # 每个 root 对应的 replies 首页和总数
+    # The first page of replies and the total reply count for each root comment.
     all_replies_per_root: Dict[str, List[dict]] = {}
     all_reply_totals: Dict[str, int] = {}
 
@@ -220,11 +207,12 @@ async def get_comments_for_blog(
         all_replies_per_root[rid] = replies
         all_reply_totals[rid] = rtotal
 
-        # 收集 replies 的作者 id
+        # collect author_id of replies
         for rp in replies:
             author_ids.add(rp["author_id"])
     logger.info("list author_ids=%s", author_ids)
-    # 4. 一次性查出所有作者的用户名
+
+    # Query all authors' usernames in a single batch
     id_to_username={}
     for i in author_ids:
         #users = await user_repository.find_by_id(db, i)
@@ -234,7 +222,7 @@ async def get_comments_for_blog(
     logger.info("id_to_username=%s", id_to_username)
     #id_to_username = {u["id"]: u["username"] for u in users}
 
-    # 5. 组装 RootCommentResponse 列表
+
     root_responses: List[RootCommentResponse] = []
 
     for root in root_comments:
@@ -246,14 +234,11 @@ async def get_comments_for_blog(
         for rp in replies_docs:
             reply_author_username = id_to_username.get(rp["author_id"], "Unknown")
 
-            # 方案 2：直接使用文档中的 reply_to_username 快照
-            reply_to_username = rp.get("reply_to_username")
 
             formatted_replies.append(
                 CommentResponse(
                     **rp,
                     author_username=reply_author_username,
-                    #reply_to_username=reply_to_username,
                 )
             )
 

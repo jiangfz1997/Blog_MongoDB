@@ -17,11 +17,10 @@ class SearchBlogPreview(BaseModel):
 
 class BlogListPage(BaseModel):
     """
-    通用博客分页结构：
-    - total: 符合条件的总条数
-    - page: 当前页码，从 1 开始
-    - size: 每页条数
-    - items: 当前页的博客预览列表
+    total: total number of matching items
+    page: current page number, starting from 1
+    size: number of items per page
+    items: list of blog previews for the current page
     """
     total: int = Field(..., ge=0, description="Total number of matched blogs")
     page: int = Field(..., ge=1, description="Current page number (1-based)")

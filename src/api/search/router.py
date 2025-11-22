@@ -27,9 +27,9 @@ async def search_user_endpoint(
     #size: int = Query(10, ge=1, le=50, description="Page size for the user's blogs"),
 ):
     """
-    按用户名搜索：
-    - 如果用户存在：返回 username and userid
-    - 如果用户不存在：user = null
+    Search by username:
+    - If the user exists: return username and user_id
+    - If the user does not exist: user = null
     """
     #logger.info("Search user by username, username=%s, page=%s, size=%s", username, page, size)
     logger.info("Search user by username, username=%s", username)
@@ -57,9 +57,9 @@ async def search_blogs_endpoint(
     size: int = Query(10, ge=1, le=50, description="Page size"),
 ):
     """
-    按关键字搜索博客标题：
-    - 标题包含 keyword（不区分大小写）
-    - 返回分页结果
+    Search blog titles by keyword:
+    - Title contains the keyword (case-insensitive)
+    - Return the paginated results
     """
     logger.info("Search blogs by keyword, keyword=%s, page=%s, size=%s", keyword, page, size)
     result = await search_service.search_blogs_by_keyword(

@@ -5,9 +5,8 @@ from bson import ObjectId
 
 def _serialize(doc: dict) -> dict:
     """
-        将 MongoDB 返回的原始评论文档转换为 Python dict，统一字段格式。
-        注意：这里只负责 comment 自身的字段，不负责填充 username。
-        """
+    Convert the raw comment document returned by MongoDB into a Python dict and unify the field format.
+    """
     return {
         "id": str(doc["_id"]),
         "blog_id": str(doc["blog_id"]),
@@ -45,15 +44,14 @@ async def find_comment_by_id(db, comment_id: str) -> Optional[dict]:
     return _serialize(doc)
 
 async def delete_root_thread(db: AsyncIOMotorDatabase, root_id: str) -> int:
-    # 这里 root_id 存的是字符串形式，Mongo 中 root_id 字段也用字符串保存
     res = await db.comments.delete_many({"root_id": root_id})
     return res.deleted_count
 
 
 async def delete_single_comment(db: AsyncIOMotorDatabase, comment_id: str) -> bool:
     """
-    删除单条非 root 评论。
-    不做级联删除，其它回复仍保留。
+    Delete a single non-root comment.
+    Do not perform cascade deletion; other replies remain preserved.
     """
     try:
         oid = ObjectId(comment_id)
@@ -71,11 +69,11 @@ async def list_root_comments_by_blog(
     limit: int = 10,
 ) -> List[dict]:
     """
-    分页列出某篇 blog 的 root 评论（不包含 replies）。
-    用于根评论列表分页：
-      - 条件：blog_id = blog_id, is_root = True
-      - 排序：按 created_at 升序（最早的在前），你也可以改成 -1
-      - 分页：skip / limit
+    List root comments (excluding replies) of a blog with pagination.
+    Used for paginating the root comment list:
+    - Filter: blog_id = blog_id, is_root = True
+    - Sort: by created_at in ascending order (earliest first), or change to descending if needed
+    - Pagination: skip / limit
     """
     cursor = (
         db.comments
@@ -93,8 +91,8 @@ async def list_root_comments_by_blog(
 
 async def count_root_comments_by_blog(db: AsyncIOMotorDatabase, blog_id: str) -> int:
     """
-    统计某篇 blog 下 root 评论的总数。
-    用于根评论分页的 total。
+    Count the total number of root comments under a blog.
+    Used as the total for root comment pagination.
     """
     return await db.comments.count_documents({"blog_id": blog_id, "is_root": True})
 
@@ -106,12 +104,10 @@ async def list_replies_by_root(
     limit: int = 10,
 ) -> List[dict]:
     """
-    分页列出某个 root 评论下的所有非 root 评论（flat replies）。
-    条件：
-      - root_id = 给定 root_id
-      - is_root = False
-    排序：
-      - 按 created_at 升序，保证对话时间线一致。
+    Paginate all non-root comments (flat replies) under a given root comment.
+    root_id = given root_id
+    is_root = False
+    Sort by created_at in ascending order to preserve the conversation timeline.
     """
     cursor = (
         db.comments
@@ -129,8 +125,8 @@ async def list_replies_by_root(
 
 async def count_replies_by_root(db: AsyncIOMotorDatabase, root_id: str) -> int:
     """
-    统计某个 root 评论下的非 root 评论总数。
-    用于 replies 分页的 total。
+    Count the total number of non-root comments under a root comment.
+    Used as the total for non-root comment pagination.
     """
     return await db.comments.count_documents({"root_id": root_id, "is_root": False})
 
