@@ -56,6 +56,8 @@ class BlogResponse(BaseModel):
     updated_at: Optional[datetime] = None
     tags: List[str] = Field(default_factory=list, description="User-defined tags of the blog")
     view_count: int = Field(0, ge=0, description="Total view count of the blog")
+    like_count: int = Field(0, ge=0, description="Total like count of the blog")
+    is_liked: bool = Field(False, description="Whether the current user has liked the blog, False for unauthenticated users")
 
 class BlogPreviewResponse(BaseModel):
     id: str = Field(..., description="Blog ID")
@@ -78,3 +80,7 @@ class BlogViewRankResponse(BaseModel):
     updated_at: datetime | None = Field(None, description="Last update time")
     tags: List[str] = Field(default_factory=list, description="User-defined tags of the blog")
     view_count: int = Field(..., ge=0, description="Total view count of the blog")
+
+class BlogLikeResponse(BaseModel):
+    is_liked: bool
+    like_count: int

@@ -126,8 +126,21 @@ async def logout_user():
         content={"message": "Successfully logged out"},
         status_code=200
     )
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        httponly=True,
+        secure=False,
+        samesite="lax"
+    )
+
+    response.delete_cookie(
+        key="refresh_token",
+        path="/",
+        httponly=True,
+        secure=False,
+        samesite="lax"
+    )
     return response
 
 @router.get(

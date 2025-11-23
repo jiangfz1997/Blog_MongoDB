@@ -45,7 +45,7 @@ class BlogSortField(str, Enum):
     CREATED_AT = "created_at"
     UPDATED_AT = "updated_at"
     VIEWS_COUNT = "view_count"
-    LIKES_COUNT = "like_count"
+    LIKE_COUNT = "like_count"
     COMMENTS_COUNT = "comment_count"
 
 class SortDirection(str, Enum):

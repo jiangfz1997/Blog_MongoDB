@@ -75,6 +75,7 @@ def _serialize(doc: dict) -> dict:
         "updated_at": doc.get("updated_at"),
         "tags": doc.get("tags", []),
         "view_count": doc.get("view_count", 0),
+        "like_count": doc.get("like_count", 0),
     }
 
 async def list_blogs_by_author(
@@ -83,9 +84,14 @@ async def list_blogs_by_author(
     limit: int = 10,
     skip: int = 0,
 ) -> List[dict]:
+    projection = {
+        "content": 0,
+        "liked_by": 0,
+    }
+
     cursor = (
         db.blogs
-        .find({"author_id": author_id})
+        .find({"author_id": author_id}, projection=projection)
         .sort("created_at", -1)
         .skip(skip)
         .limit(limit)
@@ -219,7 +225,7 @@ async def get_hottest_tags(db: AsyncIOMotorDatabase,limit: int = 10,) -> List[di
     return results
 
 # read blog
-async def find_blog_by_id_and_inc_view(db: AsyncIOMotorDatabase, blog_id: str) -> Optional[dict]:
+async def find_blog_by_id_and_inc_view(db: AsyncIOMotorDatabase, blog_id: str, user_id:str=None) -> Optional[dict]:
     try:
         oid = ObjectId(blog_id)
     except Exception:
@@ -233,12 +239,25 @@ async def find_blog_by_id_and_inc_view(db: AsyncIOMotorDatabase, blog_id: str) -
     if not doc:
         return None
 
+    liked_by_list = doc.get("liked_by", [])
+    if user_id:
+        try:
+            u_oid = ObjectId(user_id)
+            doc["is_liked"] = u_oid in liked_by_list
+        except Exception as e:
+            doc["is_liked"] = False
+    else:
+        doc["is_liked"] = False
+
+    doc.pop("liked_by", None)
     doc["id"] = str(doc["_id"])
     doc.pop("_id", None)
     if "tags" not in doc:
         doc["tags"] = []
     if "view_count" not in doc:
         doc["view_count"] = 0
+    if "like_count" not in doc:
+        doc["like_count"] = 0
     return doc
 
 async def list_blogs_by_views(
@@ -266,4 +285,28 @@ async def list_blogs_by_views(
             "view_count": doc.get("view_count", 0),
         })
     return items
+
+async def modify_liked_by(
+    db: AsyncIOMotorDatabase,
+    blog_id: str,
+    user_id: str,
+    like_num: int,
+) -> bool:
+    try:
+        b_oid = ObjectId(blog_id)
+        u_oid = ObjectId(user_id)
+    except Exception:
+        return False
+    query = {"_id": b_oid}
+    update_op = {"$inc": {"like_count": like_num}}
+
+    if like_num < 0:
+        query["liked_by"] = u_oid
+        update_op["$pull"] = {"liked_by": u_oid}
+    else:
+        query["liked_by"] = {"$ne": u_oid}
+        update_op["$addToSet"] = {"liked_by": u_oid}
+
+    result = await db.blogs.update_one(query, update_op)
+    return result.matched_count == 1
 

@@ -1,5 +1,8 @@
 import asyncio
 from datetime import datetime
+
+from bson import ObjectId
+
 from src.db.mongo import db
 from . import repository
 from src.api.blogs.schemas import *
@@ -17,6 +20,9 @@ async def create_blog(author_id: str, blog_in: BlogCreate) -> dict:
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
         "tags": blog_in.tags,
+        "view_count": 0,
+        "like_count": 0,
+        "liked_by": [],
     }
     created = await asyncio.wait_for(repository.add_blog(db, blog_doc), timeout=5)
     user = await user_repository.find_by_id(db, created["author_id"])
@@ -77,11 +83,9 @@ async def remove_blog(blog_id: str, author_id: str) -> None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Delete failed")
 
 #get blog by blog_id, read blog detail content,increase view count
-async def get_blog(blog_id: str) -> dict:
-    doc = await repository.find_blog_by_id_and_inc_view(db, blog_id)
+async def get_blog(blog_id: str, user_id: str = None) -> dict:
+    doc = await repository.find_blog_by_id_and_inc_view(db, blog_id, user_id)
     # Batch query author usernames (to avoid repeated database lookups).
-
-
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blog not found")
     user = await user_repository.find_by_id(db, doc["author_id"])
@@ -145,3 +149,37 @@ async def get_hottest_tags(limit: int = 10) -> List[HottestTagResponse]:
 async def list_hottest_blogs_by_views(limit: int = 10) -> List[BlogViewRankResponse]:
     items = await repository.list_blogs_by_views(db, limit=limit)
     return [BlogViewRankResponse(**item) for item in items]
+
+
+async def like_blog(blog_id: str, user_id: str):
+
+    blog = await repository.find_blog_by_id(db, blog_id)
+
+    if not blog:
+        raise HTTPException(status_code=404, detail="Blog post not found")
+
+    liked_by_list = blog.get("liked_by", [])
+
+    is_liked = True
+    try:
+        b_oid = ObjectId(blog_id)
+        u_oid = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+
+    like_num = 1
+    if u_oid in liked_by_list:
+        like_num *= -1
+        is_liked = False
+    success = await repository.modify_liked_by(db, blog_id, user_id, like_num)
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update like status")
+
+    updated_blog = await repository.find_blog_by_id(db, blog_id)
+    like_count = updated_blog.get("like_count", 0)
+
+    return {
+        "is_liked": is_liked,
+        "like_count": like_count
+    }

@@ -64,13 +64,15 @@ async def delete_blog_endpoint(
     response_model=BlogResponse,
     status_code=status.HTTP_200_OK,
     summary="Get blog by ID",
-    description="Fetch a blog post by its ID."
+    description="Fetch a blog post by its ID.",
 )
 async def get_blog_by_id_endpoint(
-    blog_id: str = Path(..., min_length=24, max_length=24, description="MongoDB ObjectId string")
+    blog_id: str = Path(..., min_length=24, max_length=24, description="MongoDB ObjectId string"),
+    current_user: dict | None = Depends(auth.try_get_current_user)
 ):
     logger.info("list the blog, blog_id is=%s", blog_id)
-    return await service.get_blog(blog_id)
+    user_id = current_user["id"] if current_user else None
+    return await service.get_blog(blog_id, user_id)
 
 @router.get(
     "/{blog_id}/preview",
@@ -142,3 +144,18 @@ async def get_hottest_blogs_by_views_endpoint(
 ):
     logger.info("Get hottest blogs by views, limit=%s", limit)
     return await service.list_hottest_blogs_by_views(limit)
+
+@router.post(
+    "/{blog_id}/like",
+    response_model=BlogLikeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Toggle like on a blog",  # 改为 Toggle 更准确
+    description="Toggle like status (Like/Unlike). Requires login."
+)
+async def like_blog_post(
+    blog_id: str = Path(..., min_length=24, max_length=24, description="MongoDB ObjectId string"),
+    claims: dict = Depends(auth.verify_access_token),
+):
+    user_id = claims["sub"]
+    logger.info("User %s liked blog %s", user_id, blog_id)
+    return await service.like_blog(blog_id, user_id)

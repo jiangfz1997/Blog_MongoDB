@@ -5,7 +5,11 @@ from jose import jwt, JWTError
 from bson import ObjectId
 from src.db.mongo import db
 
-SECRET_KEY = "CHANGE_THIS_TO_STRONG_SECRET"
+import os
+
+SECRET_KEY = os.environ.get("SECRET_KEY", "DEFAULTSECRETKEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable not set")
 ALGORITHM = "HS256"
 
 
@@ -44,6 +48,15 @@ def verify_access_token(request: Request):
     return payload
 
 
+def get_token_from_request(request: Request) -> str | None:
+    token = request.cookies.get("access_token")
+    if not token:
+        authz = request.headers.get("Authorization", "")
+        if authz.startswith("Bearer "):
+            token = authz.split(" ", 1)[1]
+    return token
+
+
 async def get_current_user(
         payload: dict = Depends(verify_access_token)  # 先拿到 payload
 ):
@@ -61,3 +74,28 @@ async def get_current_user(
 
     user["id"] = str(user["_id"])
     return user
+
+
+async def try_get_current_user(request: Request) -> dict | None:
+
+    token = get_token_from_request(request)
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id or not ObjectId.is_valid(user_id):
+            return None
+
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return None
+        user["id"] = str(user["_id"])
+        return user
+
+    except JWTError:
+        return None
+    except Exception:
+        return None
+

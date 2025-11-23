@@ -16,7 +16,7 @@ SORT_MAPPING = {
     BlogSortQuery.UPDATE_DATE: BlogSortField.UPDATED_AT,
     BlogSortQuery.COMMENTS: BlogSortField.COMMENTS_COUNT,
     BlogSortQuery.VIEWS: BlogSortField.VIEWS_COUNT,
-    BlogSortQuery.LIKES: BlogSortField.LIKES_COUNT,
+    BlogSortQuery.LIKES: BlogSortField.LIKE_COUNT,
 }
 
 
