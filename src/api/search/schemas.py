@@ -17,8 +17,8 @@ class SearchBlogPreview(BaseModel):
     updated_at: Optional[datetime] = Field(None, description="When the blog was last updated")
     tags: Optional[List[str]] = Field(None, description="Tags associated with the blog")
     view_count: Optional[int] = Field(0, ge=0, description="Number of views")
-
-
+    like_count: Optional[int] = Field(0, ge=0, description="Number of likes")
+    is_liked: Optional[bool] = Field(False, description="Whether the current user has liked the blog")
 class BlogListPage(BaseModel):
     """
     total: total number of matching items

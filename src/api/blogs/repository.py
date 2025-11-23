@@ -310,3 +310,92 @@ async def modify_liked_by(
     result = await db.blogs.update_one(query, update_op)
     return result.matched_count == 1
 
+
+from datetime import datetime, timedelta
+from typing import List, Optional
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
+
+
+async def get_trending_feed(
+        db: AsyncIOMotorDatabase,
+        user_id: Optional[str],
+        page: int = 1,
+        size: int = 10,
+        days_window: int = 100,
+        gravity: float = 1.8
+) -> List[dict]:
+
+    # Calculate the cutoff date
+    cutoff_date = datetime.utcnow() - timedelta(days=days_window)
+    skip = (page - 1) * size
+
+    pipeline = [
+        {"$match": {"created_at": {"$gte": cutoff_date}}},
+
+        {
+            "$addFields": {
+
+               # calculate age in hours
+                "hours_age": {
+                    "$divide": [
+                        {"$subtract": ["$$NOW", "$created_at"]},
+                        3600000
+                    ]
+                },
+
+                # calculate interaction score by views and likes
+                "interaction_score": {
+                    "$add": [
+                        {"$ifNull": ["$view_count", 0]},
+                        {"$multiply": [{"$ifNull": ["$like_count", 0]}, 5]}
+                    ]
+                }
+            }
+        },
+
+        # score calculation: score = interaction_score / (hours_age + 2)^gravity
+        {
+            "$addFields": {
+                "trend_score": {
+                    "$divide": [
+                        "$interaction_score",
+                        {"$pow": [{"$add": ["$hours_age", 2]}, gravity]}
+                    ]
+                }
+            }
+        },
+
+        {"$sort": {"trend_score": -1}},
+
+        {"$skip": skip},
+        {"$limit": size},
+
+
+    ]
+
+
+    if user_id:
+        pipeline.append({
+            "$addFields": {
+                "is_liked": {"$in": [ObjectId(user_id), {"$ifNull": ["$liked_by", []]}]}
+            }
+        })
+    else:
+        pipeline.append({"$addFields": {"is_liked": False}})
+
+    pipeline.append({
+        "$project": {
+            "liked_by": 0, "content": 0,
+            "hot_score": 0, "hours_age": 0, "interaction_score": 0  # 算完的过程变量都扔掉
+        }
+    })
+
+    cursor = db.blogs.aggregate(pipeline)
+    blogs = await cursor.to_list(length=size)
+
+    for blog in blogs:
+        blog["id"] = str(blog["_id"])
+
+    return blogs
+

@@ -68,6 +68,7 @@ class BlogPreviewResponse(BaseModel):
     tags: List[str] = Field(default_factory=list, description="User-defined tags of the blog")
     view_count: int = Field(0, ge=0, description="Total view count of the blog")
 
+
 class HottestTagResponse(BaseModel):
     tag: str = Field(..., description="Tag name")
     blog_count: int = Field(..., ge=1, description="Number of blogs having this tag")

@@ -4,7 +4,7 @@ from src.api.search import service as search_service
 from src.api.search.schemas import SearchUserResult, SearchBlogsResult, BlogSortQuery, BlogSortField, SortDirection
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status, Path, Query
-
+from src.auth import auth
 logger = get_logger()
 router = APIRouter(
     prefix="/search",
@@ -19,6 +19,15 @@ SORT_MAPPING = {
     BlogSortQuery.LIKES: BlogSortField.LIKE_COUNT,
 }
 
+@router.get("/discover", summary="Get trending blogs")
+async def get_discover_feed(
+        page: int = Query(1, ge=1, description="Page number (1-based)"),
+        size: int = Query(5, ge=1, le=50, description="Page size"),
+        current_user: dict | None = Depends(auth.try_get_current_user)
+):
+    user_id = current_user["id"] if current_user else None
+    logger.debug("Get discover feed result: %s", user_id)
+    return await search_service.fetch_trending_blogs(user_id=user_id, page=page, size=size)
 
 @router.get(
     "/user",
@@ -91,3 +100,5 @@ async def search_blogs_endpoint(
     )
     logger.debug("Search blogs result: %s", result)
     return result
+
+

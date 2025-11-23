@@ -44,6 +44,8 @@ async def _build_blog_list_page(
                 updated_at=doc.get("updated_at"),
                 tags=doc.get("tags", []),
                 view_count=doc.get("view_count", 0),
+                like_count=doc.get("like_count",0),
+                is_liked=doc.get("is_liked",False),
             )
         )
 
@@ -129,6 +131,29 @@ async def search_blogs_by_keyword(
 
     blogs_page = await _build_blog_list_page(
         blog_docs=blog_docs,
+        total=total,
+        page=page,
+        size=size,
+    )
+
+    return SearchBlogsResult(blogs=blogs_page)
+
+async def fetch_trending_blogs(user_id: str,page: int=1, size: int = 5) -> SearchBlogsResult:
+    LOOKBACK_DAYS = 100
+    GRAVITY = 1.8
+    recommended_blogs = await blog_repository.get_trending_feed(
+        db,
+        user_id,
+        page=page,
+        size=size,
+        days_window=LOOKBACK_DAYS,
+        gravity=GRAVITY
+    )
+
+    total = len(recommended_blogs)
+
+    blogs_page = await _build_blog_list_page(
+        blog_docs=recommended_blogs,
         total=total,
         page=page,
         size=size,
