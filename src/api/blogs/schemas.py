@@ -51,6 +51,7 @@ class BlogResponse(BaseModel):
     title: str
     content: str
     author_id: str
+    author_username: str
     created_at: datetime
     updated_at: Optional[datetime] = None
     tags: List[str] = Field(default_factory=list, description="User-defined tags of the blog")

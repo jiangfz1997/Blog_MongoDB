@@ -4,6 +4,8 @@ from bson import ObjectId
 from datetime import datetime
 from pymongo import ReturnDocument
 
+from src.api.search.schemas import SortDirection, BlogSortField
+
 
 async def add_blog(db: AsyncIOMotorDatabase, blog_doc: dict) -> dict:
     if "tags" not in blog_doc:
@@ -140,6 +142,58 @@ async def count_blogs_by_title(db: AsyncIOMotorDatabase,keyword: str,) -> int:
     }
     return await db.blogs.count_documents(query)
 
+async def count_blogs(db: AsyncIOMotorDatabase, keyword: str=None, tags: List[str]=None) -> int:
+    query = {}
+    if keyword:
+        query["title"] = {
+            "$regex": keyword,
+            "$options": "i"
+        }
+    if tags:
+        query["tags"] = {"$all": tags}
+    return await db.blogs.count_documents(query)
+
+async def find_blogs_by_filters(
+        db: AsyncIOMotorDatabase,
+        keyword: str=None,
+        tags: List[str]=None,
+        skip: int=0,
+        limit: int=10,
+        sort_by: BlogSortField=BlogSortField.CREATED_AT,
+        sort_order: SortDirection=SortDirection.DESC,
+) -> List[dict]:
+    query = {}
+    if keyword:
+        query["title"] = {
+            "$regex": keyword,
+            "$options": "i"
+        }
+    if tags:
+        # Match blogs that contain all specified tags
+        query["tags"] = {"$all": tags}
+
+    direction = -1 if sort_order == SortDirection.DESC else 1
+    sort_criteria = [
+        (sort_by.value, direction),
+        ("_id", -1)  # Secondary sort by _id to ensure consistent ordering
+    ]
+
+    # using projection to exclude content field, prevent large memory usage
+    projection = {"content": 0}
+
+    cursor = (
+        db.blogs
+        .find(query, projection)
+        .sort(sort_criteria)
+        .skip(skip)
+        .limit(limit)
+    )
+
+    items: List[dict] = []
+    async for doc in cursor:
+        items.append(_serialize(doc))
+    return items
+
 async def get_hottest_tags(db: AsyncIOMotorDatabase,limit: int = 10,) -> List[dict]:
     """
     Aggregate and compute the currently hottest tags.
@@ -212,3 +266,4 @@ async def list_blogs_by_views(
             "view_count": doc.get("view_count", 0),
         })
     return items
+

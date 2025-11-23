@@ -5,17 +5,23 @@ from . import repository
 from src.api.blogs.schemas import *
 from fastapi import HTTPException, status
 from typing import Dict, Any, Optional
+from src.api.users import repository as user_repository
+from src.logger import get_logger
 
+logger = get_logger()
 async def create_blog(author_id: str, blog_in: BlogCreate) -> dict:
     blog_doc = {
         "title": blog_in.title,
         "content": blog_in.content,
         "author_id": author_id,                 # from JWT
         "created_at": datetime.utcnow(),
-        "updated_at": None,
+        "updated_at": datetime.utcnow(),
         "tags": blog_in.tags,
     }
     created = await asyncio.wait_for(repository.add_blog(db, blog_doc), timeout=5)
+    user = await user_repository.find_by_id(db, created["author_id"])
+    user_name = user["username"] if user else "Unknown"
+    created["author_username"] = user_name
     return created
 
 async def edit_blog(blog_id: str, author_id: str, update_fields: Dict[str, Any]) -> dict:
@@ -47,7 +53,9 @@ async def edit_blog(blog_id: str, author_id: str, update_fields: Dict[str, Any])
     updated = await asyncio.wait_for(repository.update_blog(db, blog_id, filtered), timeout=5)
     if not updated:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Update failed")
-
+    user = await user_repository.find_by_id(db, updated["author_id"])
+    user_name = user["username"] if user else "Unknown"
+    updated["author_username"] = user_name
     return updated
 
 
@@ -71,8 +79,15 @@ async def remove_blog(blog_id: str, author_id: str) -> None:
 #get blog by blog_id, read blog detail content,increase view count
 async def get_blog(blog_id: str) -> dict:
     doc = await repository.find_blog_by_id_and_inc_view(db, blog_id)
+    # Batch query author usernames (to avoid repeated database lookups).
+
+
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blog not found")
+    user = await user_repository.find_by_id(db, doc["author_id"])
+    user_name = user["username"] if user else "Unknown"
+    doc["author_username"] = user_name
+    logger.debug(f"Get blog detail: {doc}")
     return doc
 
 # get blog preview without content

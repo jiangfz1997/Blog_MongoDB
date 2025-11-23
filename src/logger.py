@@ -24,7 +24,7 @@ def setup_logging(filename: str | Path = DEFAULT_LOGFILE, level: str = 'info', w
     if root.handlers:
         return root
 
-    log_level = LEVELS.get(level, logging.INFO)
+    log_level = LEVELS.get(level, logging.DEBUG)
     root.setLevel(log_level)
     root.propagate = False
 
@@ -50,7 +50,7 @@ def get_logger(name: str = None):
 
     root_name = "blogapp"
     if not logging.getLogger(root_name).handlers:
-        setup_logging()
+        setup_logging(level=logging.DEBUG)
     logger = logging.getLogger(name or root_name)
     return logger
 

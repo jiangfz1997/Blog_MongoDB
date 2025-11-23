@@ -2,9 +2,13 @@
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, Request, status
 from jose import jwt, JWTError
+from bson import ObjectId
+from src.db.mongo import db
 
 SECRET_KEY = "CHANGE_THIS_TO_STRONG_SECRET"
 ALGORITHM = "HS256"
+
+
 
 def create_access_token(data: dict, expires_minutes: int = 15):
     to_encode = data.copy()
@@ -38,3 +42,22 @@ def verify_access_token(request: Request):
     if "sub" not in payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
     return payload
+
+
+async def get_current_user(
+        payload: dict = Depends(verify_access_token)  # 先拿到 payload
+):
+
+    user_id = payload.get("sub")
+
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user ID format")
+
+
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    user["id"] = str(user["_id"])
+    return user

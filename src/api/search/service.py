@@ -9,7 +9,7 @@ from .schemas import (
     SearchBlogPreview,
     BlogListPage,
     SearchUserResult,
-    SearchBlogsResult
+    SearchBlogsResult, BlogSortField, SortDirection
 )
 
 async def _build_blog_list_page(
@@ -41,6 +41,9 @@ async def _build_blog_list_page(
                 title=doc["title"],
                 author_username=username_map[doc["author_id"]],
                 created_at=doc["created_at"],
+                updated_at=doc.get("updated_at"),
+                tags=doc.get("tags", []),
+                view_count=doc.get("view_count", 0),
             )
         )
 
@@ -95,9 +98,12 @@ async def search_user_with_blogs(username: str,) -> SearchUserResult:
 
 
 async def search_blogs_by_keyword(
-    keyword: str,
-    page: int,
-    size: int,
+    keyword: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    page: int = 0,
+    size: int = 10,
+    sort_by: BlogSortField = BlogSortField.CREATED_AT,
+    sort_order: SortDirection = SortDirection.DESC,
 ) -> SearchBlogsResult:
     """
     Search blog titles by keyword (case-insensitive).
@@ -105,17 +111,20 @@ async def search_blogs_by_keyword(
     """
     skip = (page - 1) * size
 
-    total = await blog_repository.count_blogs_by_title(db, keyword)
+    total = await blog_repository.count_blogs(db, keyword, tags)
     if total == 0:
         empty_page = BlogListPage(total=0, page=page, size=size, items=[])
         return SearchBlogsResult(blogs=empty_page)
 
     # current page
-    blog_docs = await blog_repository.search_blogs_by_title(
+    blog_docs = await blog_repository.find_blogs_by_filters(
         db=db,
         keyword=keyword,
+        tags=tags,
         skip=skip,
         limit=size,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
     blogs_page = await _build_blog_list_page(

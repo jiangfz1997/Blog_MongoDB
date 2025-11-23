@@ -1,5 +1,6 @@
 logs/
 mongo_data/
+mongo-data/
 .idea/
 .vscode/
 grafana_data/

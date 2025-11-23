@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+from enum import Enum
 
 
 class SearchUserPreview(BaseModel):
@@ -13,6 +14,9 @@ class SearchBlogPreview(BaseModel):
     title: str = Field(..., description="Title of the blog")
     author_username: str = Field(..., description="Username of the author")
     created_at: datetime = Field(..., description="When the blog was created")
+    updated_at: Optional[datetime] = Field(None, description="When the blog was last updated")
+    tags: Optional[List[str]] = Field(None, description="Tags associated with the blog")
+    view_count: Optional[int] = Field(0, ge=0, description="Number of views")
 
 
 class BlogListPage(BaseModel):
@@ -35,3 +39,22 @@ class SearchUserResult(BaseModel):
 #search keyword
 class SearchBlogsResult(BaseModel):
     blogs: BlogListPage
+
+
+class BlogSortField(str, Enum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    VIEWS_COUNT = "view_count"
+    LIKES_COUNT = "like_count"
+    COMMENTS_COUNT = "comment_count"
+
+class SortDirection(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+class BlogSortQuery(str, Enum):
+    CREATE_DATE = "created"
+    UPDATE_DATE = "updated"
+    VIEWS = "views"
+    LIKES = "likes"
+    COMMENTS = "comments"

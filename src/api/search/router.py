@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from src.logger import get_logger
 from src.api.search import service as search_service
-from src.api.search.schemas import SearchUserResult, SearchBlogsResult
+from src.api.search.schemas import SearchUserResult, SearchBlogsResult, BlogSortQuery, BlogSortField, SortDirection
+from typing import List, Optional
+from fastapi import APIRouter, Depends, status, Path, Query
 
 logger = get_logger()
 router = APIRouter(
@@ -9,7 +11,14 @@ router = APIRouter(
     tags=["search"],
 )
 
-from fastapi import APIRouter, Depends, status, Path, Query
+SORT_MAPPING = {
+    BlogSortQuery.CREATE_DATE: BlogSortField.CREATED_AT,
+    BlogSortQuery.UPDATE_DATE: BlogSortField.UPDATED_AT,
+    BlogSortQuery.COMMENTS: BlogSortField.COMMENTS_COUNT,
+    BlogSortQuery.VIEWS: BlogSortField.VIEWS_COUNT,
+    BlogSortQuery.LIKES: BlogSortField.LIKES_COUNT,
+}
+
 
 @router.get(
     "/user",
@@ -52,19 +61,33 @@ async def search_user_endpoint(
     ),
 )
 async def search_blogs_endpoint(
-    keyword: str = Query(..., min_length=1, description="Keyword to match in blog titles"),
+    keyword: Optional[str] = Query(None, description="Keyword to match in blog titles"),
+    tags: Optional[List[str]] = Query(None, description="Filter by list of tags (e.g., ?tags=python&tags=api)"),
     page: int = Query(1, ge=1, description="Page number (1-based)"),
     size: int = Query(10, ge=1, le=50, description="Page size"),
+    sort_by: BlogSortQuery = Query(BlogSortQuery.CREATE_DATE, description="Field to sort by"),
+    sort_order: SortDirection = Query(SortDirection.DESC, description="Sort order"),
 ):
     """
     Search blog titles by keyword:
     - Title contains the keyword (case-insensitive)
     - Return the paginated results
     """
-    logger.info("Search blogs by keyword, keyword=%s, page=%s, size=%s", keyword, page, size)
+    logger.info(f"Search blogs by keyword={keyword}")
+    logger.info(f"Search blogs by tags={tags}")
+    if not keyword and not tags:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one of 'keyword' or 'tags' must be provided for searching blogs."
+        )
+
     result = await search_service.search_blogs_by_keyword(
         keyword=keyword,
+        tags=tags,
         page=page,
         size=size,
+        sort_by=SORT_MAPPING[sort_by],
+        sort_order=sort_order,
     )
+    logger.debug("Search blogs result: %s", result)
     return result

@@ -4,6 +4,7 @@ from src.api.users.service import *
 from src.logger import get_logger
 from fastapi.encoders import jsonable_encoder
 from src.api.users.schemas import PasswordChange
+from src.auth.auth import *
 
 logger = get_logger()
 router = APIRouter(
@@ -128,3 +129,14 @@ async def logout_user():
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return response
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get current user info",
+    description="Fetch the currently authenticated user's information."
+)
+async def read_users_me(current_user: dict = Depends(get_current_user)):
+    logger.debug(f"Current user info: {current_user}")
+    return current_user
