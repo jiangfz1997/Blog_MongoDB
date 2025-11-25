@@ -29,34 +29,34 @@ async def get_discover_feed(
     logger.debug("Get discover feed result: %s", user_id)
     return await search_service.fetch_trending_blogs(user_id=user_id, page=page, size=size)
 
-@router.get(
-    "/user",
-    response_model=SearchUserResult,
-    status_code=status.HTTP_200_OK,
-    summary="Search user by username",
-    description=(
-        "Search for a user by username and return the user info plus a paginated list "
-        "of blogs authored by that user."
-    ),
-)
-async def search_user_endpoint(
-    username: str = Query(..., min_length=1, description="Exact username to search"),
-    #page: int = Query(1, ge=1, description="Page number (1-based) for the user's blogs"),
-    #size: int = Query(10, ge=1, le=50, description="Page size for the user's blogs"),
-):
-    """
-    Search by username:
-    - If the user exists: return username and user_id
-    - If the user does not exist: user = null
-    """
-    #logger.info("Search user by username, username=%s, page=%s, size=%s", username, page, size)
-    logger.info("Search user by username, username=%s", username)
-    result = await search_service.search_user_with_blogs(
-        username=username,
-        #page=page,
-        #size=size,
-    )
-    return result
+# @router.get(
+#     "/user",
+#     response_model=SearchUserResult,
+#     status_code=status.HTTP_200_OK,
+#     summary="Search user by username",
+#     description=(
+#         "Search for a user by username and return the user info plus a paginated list "
+#         "of blogs authored by that user."
+#     ),
+# )
+# async def search_user_endpoint(
+#     username: str = Query(..., min_length=1, description="Exact username to search"),
+#     page: int = Query(1, ge=1, description="Page number (1-based) for the user's blogs"),
+#     size: int = Query(10, ge=1, le=50, description="Page size for the user's blogs"),
+# ):
+#     """
+#     Search by username:
+#     - If the user exists: return username and user_id
+#     - If the user does not exist: user = null
+#     """
+#     #logger.info("Search user by username, username=%s, page=%s, size=%s", username, page, size)
+#     logger.info("Search user by username, username=%s", username)
+#     result = await search_service.search_user_with_blogs(
+#         username=username,
+#         page=page,
+#         size=size,
+#     )
+#     return result
 
 
 @router.get(
@@ -101,4 +101,23 @@ async def search_blogs_endpoint(
     logger.debug("Search blogs result: %s", result)
     return result
 
+
+@router.get(
+    "/users",
+    response_model=SearchUserResult,
+    status_code=status.HTTP_200_OK,
+    summary="Search users by username",
+)
+async def search_users_endpoint(
+        q: str = Query(..., min_length=1, description="Search keyword"),
+        page: int = Query(1, ge=1, description="Page number (1-based)"),
+        size: int = Query(10, ge=1, le=50, description="Items per page"),
+):
+
+    users, total = await search_service.search_usernames_by_relevance(q, page, size)
+
+    return {
+        "users": users,
+        "total": total
+    }
 

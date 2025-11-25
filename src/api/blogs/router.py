@@ -113,9 +113,10 @@ async def list_blogs_by_author_endpoint(
     author_id: str = Path(..., description="User ID of the author"),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=50),
+    exclude_blog_id: Optional[str] = Query(None, description="Blog ID to exclude from results")
 ):
     logger.info("list others blog, author_id is=%s", author_id)
-    return await service.list_author_blogs(author_id, page, size)
+    return await service.list_author_blogs(author_id, page, size, exclude_blog_id)
 
 # hottest blog tag
 @router.get(
@@ -149,7 +150,7 @@ async def get_hottest_blogs_by_views_endpoint(
     "/{blog_id}/like",
     response_model=BlogLikeResponse,
     status_code=status.HTTP_200_OK,
-    summary="Toggle like on a blog",  # 改为 Toggle 更准确
+    summary="Toggle like on a blog",
     description="Toggle like status (Like/Unlike). Requires login."
 )
 async def like_blog_post(
@@ -159,3 +160,4 @@ async def like_blog_post(
     user_id = claims["sub"]
     logger.info("User %s liked blog %s", user_id, blog_id)
     return await service.like_blog(blog_id, user_id)
+

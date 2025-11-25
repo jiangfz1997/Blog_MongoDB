@@ -12,6 +12,10 @@ async def add_blog(db: AsyncIOMotorDatabase, blog_doc: dict) -> dict:
         blog_doc["tags"] = []
     if "view_count" not in blog_doc:
         blog_doc["view_count"] = 0
+    if "like_count" not in blog_doc:
+        blog_doc["like_count"] = 0
+    if "comment_count" not in blog_doc:
+        blog_doc["comment_count"] = 0
 
     res = await db.blogs.insert_one(blog_doc)
     created = await db.blogs.find_one({"_id": res.inserted_id})
@@ -76,6 +80,7 @@ def _serialize(doc: dict) -> dict:
         "tags": doc.get("tags", []),
         "view_count": doc.get("view_count", 0),
         "like_count": doc.get("like_count", 0),
+        "comment_count": doc.get("comment_count", 0),
     }
 
 async def list_blogs_by_author(
@@ -83,15 +88,20 @@ async def list_blogs_by_author(
     author_id: str,
     limit: int = 10,
     skip: int = 0,
+    exclude: str = None,
 ) -> List[dict]:
     projection = {
         "content": 0,
         "liked_by": 0,
     }
+    query = {"author_id": author_id}
+    if exclude:
+        exclude_oid = ObjectId(exclude)
+        query["_id"] = {"$ne": exclude_oid}
 
     cursor = (
         db.blogs
-        .find({"author_id": author_id}, projection=projection)
+        .find(query, projection=projection)
         .sort("created_at", -1)
         .skip(skip)
         .limit(limit)
@@ -335,7 +345,6 @@ async def get_trending_feed(
 
         {
             "$addFields": {
-
                # calculate age in hours
                 "hours_age": {
                     "$divide": [
@@ -343,7 +352,6 @@ async def get_trending_feed(
                         3600000
                     ]
                 },
-
                 # calculate interaction score by views and likes
                 "interaction_score": {
                     "$add": [

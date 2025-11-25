@@ -24,7 +24,7 @@ async def create_user(user_in: UserCreate) -> Tuple[dict, str, str]:
 
 
     hashed = hash_password(user_in.password)
-    user_doc = {"username": user_in.username, "email": user_in.email, "password": hashed}
+    user_doc = {"username": user_in.username, "email": user_in.email, "password": hashed, "avatar_url": user_in.avatar_url, "bio": ""}
     created = await asyncio.wait_for(repository.insert_user(db, user_doc), timeout=5)
 
     payload = {"sub": created["id"], "email": created["email"]}
@@ -40,7 +40,7 @@ async def get_user_by_email(email: str):
         del user["password"]
     return user
 
-async def get_user_public(user_id: str) -> UsernameResponse:
+async def get_user_public(user_id: str) -> dict:
     """
     use user_id return username
     """
@@ -51,7 +51,9 @@ async def get_user_public(user_id: str) -> UsernameResponse:
             detail="User not found",
         )
 
-    return UsernameResponse(username=user_doc["username"])
+    return user_doc
+
+
 
 # check password
 async def authenticate_user(email: str, password: str):
@@ -65,7 +67,8 @@ async def authenticate_user(email: str, password: str):
         "id": str(user_doc["_id"]),
         "username": user_doc["username"],
         "email": user_doc["email"],
-        "avatarUrl": user_doc.get("avatarUrl", "")
+        "avatar_url": user_doc.get("avatar_url", ""),
+        "bio": user_doc.get("bio", ""),
     }
     return user
 
@@ -84,3 +87,38 @@ async def change_password(user_id: str, old_password: str, new_password: str) ->
     ok = await repository.update_password_hash(db, ObjectId(user_id), new_hash)
     if not ok:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update password")
+
+async def check_username_exists(username: str) -> bool:
+    existing = await repository.find_by_username(db, username)
+    return existing is not None
+
+async def update_user_info(user_id, user_update) -> dict:
+    update_data = user_update.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No data provided to update"
+        )
+
+    if "username" in update_data:
+        new_username = update_data["username"]
+
+        existing_user = await repository.find_by_username(db, new_username)
+
+        if existing_user and str(existing_user["_id"]) != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username is already taken by another user."
+            )
+
+        updated_user = await repository.update_user_info(db, ObjectId(user_id), update_data)
+
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        updated_user["id"] = str(updated_user["_id"])
+
+        return updated_user
+
+
+

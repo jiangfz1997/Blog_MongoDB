@@ -20,7 +20,7 @@ def _serialize(doc: dict) -> dict:
         "created_at": doc["created_at"],
     }
 
-async def add_comment(db: AsyncIOMotorDatabase, comment_doc: dict) -> dict:
+async def add_comment(db: AsyncIOMotorDatabase, comment_doc: dict, blog_id: str) -> dict:
     res = await db.comments.insert_one(comment_doc)
     if comment_doc.get("is_root") and not comment_doc.get("root_id"):
         await db.comments.update_one(
@@ -28,6 +28,10 @@ async def add_comment(db: AsyncIOMotorDatabase, comment_doc: dict) -> dict:
             {"$set": {"root_id": str(res.inserted_id)}},
         )
     created = await db.comments.find_one({"_id": res.inserted_id})
+    await db.blogs.update_one(
+        {"_id": ObjectId(blog_id)},
+        {"$inc": {"comment_count": 1}}  # 原子加一，并发安全
+    )
     return _serialize(created)
 
 # Get single comment by ID
@@ -43,12 +47,16 @@ async def find_comment_by_id(db, comment_id: str) -> Optional[dict]:
 
     return _serialize(doc)
 
-async def delete_root_thread(db: AsyncIOMotorDatabase, root_id: str) -> int:
+async def delete_root_thread(db: AsyncIOMotorDatabase, root_id: str, blog_id:str) -> int:
     res = await db.comments.delete_many({"root_id": root_id})
+    await db.blogs.update_one(
+        {"_id": ObjectId(blog_id)},
+        {"$inc": {"comment_count": -res.deleted_count}}
+    )
     return res.deleted_count
 
 
-async def delete_single_comment(db: AsyncIOMotorDatabase, comment_id: str) -> bool:
+async def delete_single_comment(db: AsyncIOMotorDatabase, comment_id: str, blog_id: str) -> bool:
     """
     Delete a single non-root comment.
     Do not perform cascade deletion; other replies remain preserved.
@@ -59,6 +67,10 @@ async def delete_single_comment(db: AsyncIOMotorDatabase, comment_id: str) -> bo
         return False
 
     res = await db.comments.delete_one({"_id": oid})
+    await db.blogs.update_one(
+        {"_id": ObjectId(blog_id)},
+        {"$inc": {"comment_count": -1}}
+    )
     return res.deleted_count == 1
 
 

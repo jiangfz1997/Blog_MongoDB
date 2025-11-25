@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Annotated
 
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -8,17 +8,22 @@ from enum import Enum
 class SearchUserPreview(BaseModel):
     username: str = Field(..., description="Unique username of the user")
     user_id: str
+    avatar_url: Optional[str] = Field(None, description="URL of the user's avatar image")
+    bio: Optional[str] = Field(None, description="Bio about the user")
 
 class SearchBlogPreview(BaseModel):
     blog_id: str = Field(..., description="Public identifier of the blog (used for navigation)")
     title: str = Field(..., description="Title of the blog")
     author_username: str = Field(..., description="Username of the author")
+    avatar_url: Optional[str] = Field(None, description="URL of the author's avatar image")
     created_at: datetime = Field(..., description="When the blog was created")
     updated_at: Optional[datetime] = Field(None, description="When the blog was last updated")
     tags: Optional[List[str]] = Field(None, description="Tags associated with the blog")
     view_count: Optional[int] = Field(0, ge=0, description="Number of views")
     like_count: Optional[int] = Field(0, ge=0, description="Number of likes")
     is_liked: Optional[bool] = Field(False, description="Whether the current user has liked the blog")
+    comment_count: Optional[int] = Field(0, ge=0, description="Number of comments")
+
 class BlogListPage(BaseModel):
     """
     total: total number of matching items
@@ -33,7 +38,9 @@ class BlogListPage(BaseModel):
 
 # search username
 class SearchUserResult(BaseModel):
-    user: Optional[SearchUserPreview] = None
+    users: Annotated[List[SearchUserPreview], Field(default_factory=list, description="List of found users")]
+
+    total: int = Field(..., ge=0, description="Total number of users found")
 
 
 #search keyword

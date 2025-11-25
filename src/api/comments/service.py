@@ -60,7 +60,7 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
         if not parent_user:
             reply_to_username = "Unknown"
         else:
-            reply_to_username = parent_user.username
+            reply_to_username = parent_user["username"]
 
     comment_doc = {
         "content": comment_in.content,
@@ -75,7 +75,7 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
     }
 
     created = await asyncio.wait_for(
-        comment_repository.add_comment(db, comment_doc),
+        comment_repository.add_comment(db, comment_doc, comment_in.blog_id),
         timeout=5,
     )
 
@@ -86,11 +86,12 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
     # fetch the author's username and populate author_username.
     #user = await user_repository.find_by_id(db, author_id)
     user = await user_service.get_user_public(author_id)
-    author_username = user.username if user else "Unknown"
-
+    author_username = user["username"] if user else "Unknown"
+    author_avatar = user["avatar_url"] if user else "Unknown"
     return CommentResponse(
         **created,
         author_username=author_username,
+        author_avatar=author_avatar,
     )
 
 
@@ -138,7 +139,7 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
 
     if existing["is_root"]:
         # delete whole root thread
-        deleted_count = await comment_repository.delete_root_thread(db, existing["id"])
+        deleted_count = await comment_repository.delete_root_thread(db, existing["id"], blog_id)
         if deleted_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -146,7 +147,7 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
             )
     else:
         #delete single reply
-        ok = await comment_repository.delete_single_comment(db, comment_id)
+        ok = await comment_repository.delete_single_comment(db, comment_id, blog_id)
         if not ok:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -211,41 +212,49 @@ async def get_comments_for_blog(
         for rp in replies:
             author_ids.add(rp["author_id"])
     logger.info("list author_ids=%s", author_ids)
-
+    users_list = await user_repository.find_by_id_list(db, list(author_ids))
+    user_map = {u["id"]: u for u in users_list}
     # Query all authors' usernames in a single batch
-    id_to_username={}
-    for i in author_ids:
-        #users = await user_repository.find_by_id(db, i)
-        users = await user_service.get_user_public(i)
-        logger.info("users=%s", users)
-        id_to_username[i]=users.username
-    logger.info("id_to_username=%s", id_to_username)
+    # id_to_username={}
+    # for i in author_ids:
+    #     #users = await user_repository.find_by_id(db, i)
+    #     users = await user_service.get_user_public(i)
+    #     logger.info("users=%s", users)
+    #     id_to_username[i]=users["username"]
+    # logger.info("id_to_username=%s", id_to_username)
     #id_to_username = {u["id"]: u["username"] for u in users}
 
 
     root_responses: List[RootCommentResponse] = []
 
     for root in root_comments:
-        root_author_username = id_to_username.get(root["author_id"], "Unknown")
+        # root_author_username = id_to_username.get(root["author_id"], "Unknown")
+        root_user = user_map.get(root["author_id"])
+        root_username = root_user["username"] if root_user else "Unknown"
+        root_avatar = root_user.get("avatar_url", "") if root_user else ""
 
         replies_docs = all_replies_per_root[root["id"]]
         formatted_replies: List[CommentResponse] = []
 
         for rp in replies_docs:
-            reply_author_username = id_to_username.get(rp["author_id"], "Unknown")
+            reply_user = user_map.get(rp["author_id"])
 
+            reply_username = reply_user["username"] if reply_user else "Unknown"
+            reply_avatar = reply_user.get("avatar_url", "") if reply_user else ""
 
             formatted_replies.append(
                 CommentResponse(
                     **rp,
-                    author_username=reply_author_username,
+                    author_username=reply_username,
+                    author_avatar=reply_avatar,
                 )
             )
 
         root_responses.append(
             RootCommentResponse(
                 **root,
-                author_username=root_author_username,
+                author_username=root_username,
+                author_avatar=root_avatar,
                 replies=formatted_replies,
                 replies_page=replies_page,
                 replies_size=replies_size,
@@ -297,20 +306,27 @@ async def get_replies_for_root(root_id: str, page: int, size: int) -> ReplyListR
         )
 
     author_ids = {rp["author_id"] for rp in replies}
-    id_to_username = {}
-    for i in author_ids:
-        users = await user_service.get_user_public(i)
-        id_to_username[i] = users.username
-    logger.info("id_to_username=%s", id_to_username)
+
+    users_list = await user_repository.find_by_id_list(db, list(author_ids))
+    user_map = {u["id"]: u for u in users_list}
+
+    # id_to_username = {}
+    # for i in author_ids:
+    #     users = await user_service.get_user_public(i)
+    #     id_to_username[i] = users["username"]
+    # logger.info("id_to_username=%s", id_to_username)
 
 
     formatted_replies: List[CommentResponse] = []
     for rp in replies:
-        reply_author_username = id_to_username.get(rp["author_id"], "Unknown")
+        reply_user = user_map.get(rp["author_id"])
+        reply_username = reply_user["username"] if reply_user else "Unknown"
+        reply_avatar = reply_user.get("avatar_url", "") if reply_user else ""
         formatted_replies.append(
             CommentResponse(
                 **rp,
-                author_username=reply_author_username,
+                author_username=reply_username,
+                author_avatar=reply_avatar,
             )
         )
 
@@ -321,3 +337,5 @@ async def get_replies_for_root(root_id: str, page: int, size: int) -> ReplyListR
         total=total,
         has_next=(page * size < total),
     )
+
+

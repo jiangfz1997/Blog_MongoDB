@@ -1,5 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from src.api.users.schemas import *
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from src.api.users.service import *
 from src.logger import get_logger
 from fastapi.encoders import jsonable_encoder
@@ -88,7 +87,7 @@ async def get_user_by_email_api(email: str):
 
 @router.get(
     "/{user_id}/public",
-    response_model=UsernameResponse,
+    response_model=UserInfoResponse,
     status_code=status.HTTP_200_OK,
     summary="Get public user info by ID",
     description="Return public user info (currently only username) by user ID.",
@@ -153,3 +152,33 @@ async def logout_user():
 async def read_users_me(current_user: dict = Depends(get_current_user)):
     logger.debug(f"Current user info: {current_user}")
     return current_user
+
+
+@router.get(
+    "/username/check",
+    response_model=UsernameCheckResult,
+    status_code=status.HTTP_200_OK,
+    summary="Check if username is available"
+)
+async def check_username_availability(username: str = Query(..., min_length=3),):
+    existing_user = await check_username_exists(username)
+    if existing_user:
+        return {"is_available": False, "message": "Username is already taken"}
+    return {"is_available": True, "message": "Username is available"}
+
+@router.patch(
+    "/me/info",
+    response_model=UserInfoResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update current user info",
+    description="Update the currently authenticated user's information."
+)
+async def update_current_user_info(
+    user_update: UserInfoUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["id"]
+
+    updated_user = await update_user_info(user_id, user_update)
+    logger.info(f"Updated user info for user_id={user_id}")
+    return updated_user

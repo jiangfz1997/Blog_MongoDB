@@ -19,6 +19,7 @@ class CommentResponse(BaseModel):
     blog_id: str
     author_id: str
     author_username: str
+    author_avatar: str = Field(..., description="URL of the author's avatar image")
     content: str
     created_at: datetime
 

@@ -116,12 +116,12 @@ async def get_blog_preview(blog_id: str) -> BlogPreviewResponse:
     )
 
 #get blog by author
-async def list_author_blogs(author_id: str, page: int = 1, size: int = 10) -> Dict[str, Any]:
+async def list_author_blogs(author_id: str, page: int = 1, size: int = 10, exclude_blog_id: str=None) -> Dict[str, Any]:
     page = max(page, 1)
     size = max(min(size, 50), 1)
     skip = (page - 1) * size
 
-    items = await repository.list_blogs_by_author(db, author_id, limit=size, skip=skip)
+    items = await repository.list_blogs_by_author(db, author_id, limit=size, skip=skip, exclude = exclude_blog_id)
     total = await repository.count_blogs_by_author(db, author_id)
     return {
         "items": items,

@@ -27,11 +27,15 @@ async def _build_blog_list_page(
     author_ids = {doc["author_id"] for doc in blog_docs}
 
     # Batch query author usernames (to avoid repeated database lookups).
-    username_map: Dict[str, str] = {}
-    for uid in author_ids:
-        user = await user_repository.find_by_id(db, uid)
-        username_map[uid] = user["username"] if user else "Unknown"
+    # username_map: Dict[str, str] = {}
+    # for uid in author_ids:
+    #     user = await user_repository.find_by_id(db, uid)
+    #     username_map[uid] = user["username"] if user else "Unknown"
 
+    users = await user_repository.find_by_id_list(db, list(author_ids))
+    users_map: Dict[str, Dict[str, str]] = {}
+    for user in users:
+        users_map = {user["id"]:  {"username": user["username"], "avatar_url": user["avatar_url"]}}
     # Build blog preview list
     items: List[SearchBlogPreview] = []
     for doc in blog_docs:
@@ -39,13 +43,15 @@ async def _build_blog_list_page(
             SearchBlogPreview(
                 blog_id=doc["id"],
                 title=doc["title"],
-                author_username=username_map[doc["author_id"]],
+                author_username=users_map[doc["author_id"]]["username"],
+                avatar_url=users_map[doc["author_id"]]["avatar_url"],
                 created_at=doc["created_at"],
                 updated_at=doc.get("updated_at"),
                 tags=doc.get("tags", []),
                 view_count=doc.get("view_count", 0),
                 like_count=doc.get("like_count",0),
                 is_liked=doc.get("is_liked",False),
+                comment_count=doc.get("comment_count",0),
             )
         )
 
@@ -56,7 +62,7 @@ async def _build_blog_list_page(
         items=items,
     )
 
-async def search_user_with_blogs(username: str,) -> SearchUserResult:
+async def search_user_with_blogs(username: str, page, size) -> SearchUserResult:
     """
     Search username:
     - If the user is found, return the user preview
@@ -160,3 +166,19 @@ async def fetch_trending_blogs(user_id: str,page: int=1, size: int = 5) -> Searc
     )
 
     return SearchBlogsResult(blogs=blogs_page)
+
+async def search_usernames_by_relevance(username: str, page: int = 1, limit: int = 10) -> List[SearchUserPreview]:
+    """
+    Search usernames by relevance using the repository function.
+    """
+    user_docs, total = await user_repository.search_users_by_relevance(db, username, page=page, limit=limit)
+    user_docs_previews = [
+        SearchUserPreview(
+            username=doc["username"],
+            user_id=str(doc["_id"]),
+            avatar_url=doc.get("avatar_url", ""),
+            bio = doc.get("bio", "")
+        )
+        for doc in user_docs
+    ]
+    return user_docs_previews, total
