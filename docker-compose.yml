@@ -1,33 +1,183 @@
 services:
-  mongo:
+  # Standalone
+  mongo-standalone:
     image: mongo:7.0
-    container_name: mongo
+    container_name: mongo-standalone
+    profiles: [ "standalone" ]
     restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
     ports:
       - "27017:27017"
-      - "9100:9100"
     volumes:
-      - ./node-exporter-install.sh:/node-exporter-install.sh
-      - ./mongo-data:/data/db
-    command: ["/bin/bash", "/node-exporter-install.sh"]
+      - ./mongo-data-standalone:/data/db
+    command: [ "mongod", "--bind_ip_all" ]
+    cpus: 0.5
 
+  # Sharded Cluster
+  # Config Server RS x3 / Shard1 RS x3 / Shard2 RS x3 / mongos router
+  # Config Server replica set
+  mongo-cfg1:
+    image: mongo:7.0
+    container_name: mongo-cfg1
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--configsvr", "--replSet", "cfg", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-cfg1:/data/db
+    cpus: 0.5
+
+  mongo-cfg2:
+    image: mongo:7.0
+    container_name: mongo-cfg2
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--configsvr", "--replSet", "cfg", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-cfg2:/data/db
+    cpus: 0.5
+
+  mongo-cfg3:
+    image: mongo:7.0
+    container_name: mongo-cfg3
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--configsvr", "--replSet", "cfg", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-cfg3:/data/db
+    cpus: 0.5
+
+  # Shard1 replica set
+  mongo-shard1-1:
+    image: mongo:7.0
+    container_name: mongo-shard1-1
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--shardsvr", "--replSet", "shard1", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-shard1-1:/data/db
+    cpus: 0.5
+
+  mongo-shard1-2:
+    image: mongo:7.0
+    container_name: mongo-shard1-2
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--shardsvr", "--replSet", "shard1", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-shard1-2:/data/db
+    cpus: 0.5
+
+  mongo-shard1-3:
+    image: mongo:7.0
+    container_name: mongo-shard1-3
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--shardsvr", "--replSet", "shard1", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-shard1-3:/data/db
+    cpus: 0.5
+
+  # Shard2 replica set
+  mongo-shard2-1:
+    image: mongo:7.0
+    container_name: mongo-shard2-1
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--shardsvr", "--replSet", "shard2", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-shard2-1:/data/db
+    cpus: 0.5
+
+  mongo-shard2-2:
+    image: mongo:7.0
+    container_name: mongo-shard2-2
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--shardsvr", "--replSet", "shard2", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-shard2-2:/data/db
+    cpus: 0.5
+
+  mongo-shard2-3:
+    image: mongo:7.0
+    container_name: mongo-shard2-3
+    profiles: [ "sharded" ]
+    restart: always
+    command: [ "mongod", "--shardsvr", "--replSet", "shard2", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - ./mongo-data-shard2-3:/data/db
+    cpus: 0.5
+
+  # mongos router
+  mongos-router:
+    image: mongo:7.0
+    container_name: mongos-router
+    profiles: [ "sharded" ]
+    restart: always
+    depends_on:
+      - mongo-cfg1
+      - mongo-cfg2
+      - mongo-cfg3
+    command: >
+      mongos --configdb cfg/mongo-cfg1:27017,mongo-cfg2:27017,mongo-cfg3:27017
+             --bind_ip_all --port 27017
+    ports:
+      - "27017:27017"   # Sharded 模式下，FastAPI / Locust 用这个端口访问
+    cpus: 0.5
+
+  # Sharded cluster initiator
+  mongo-sharded-init:
+    image: mongo:7.0
+    container_name: mongo-sharded-init
+    profiles: [ "sharded" ]
+    depends_on:
+      - mongos-router
+      - mongo-cfg1
+      - mongo-cfg2
+      - mongo-cfg3
+      - mongo-shard1-1
+      - mongo-shard1-2
+      - mongo-shard1-3
+      - mongo-shard2-1
+      - mongo-shard2-2
+      - mongo-shard2-3
+    volumes:
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    command: >
+      bash -c "
+        echo '>>> Sleeping 15s waiting for mongod to be ready...' &&
+        sleep 15 &&
+        echo '>>> Init Config RS (cfg)...' &&
+        mongosh --host mongo-cfg1:27017 /docker-entrypoint-initdb.d/init_cfg_rs.js &&
+        echo '>>> Init Shard1 RS (shard1)...' &&
+        mongosh --host mongo-shard1-1:27017 /docker-entrypoint-initdb.d/init_shard1_rs.js &&
+        echo '>>> Init Shard2 RS (shard2)...' &&
+        mongosh --host mongo-shard2-1:27017 /docker-entrypoint-initdb.d/init_shard2_rs.js &&
+        echo '>>> Add shards on mongos...' &&
+        mongosh --host mongos-router:27017 /docker-entrypoint-initdb.d/init_sharded_cluster.js &&
+        echo '>>> Enable sharding for blog_db + shard collections...' &&
+        mongosh --host mongos-router:27017 /docker-entrypoint-initdb.d/shard_setup_blog_db.js &&
+        echo '>>> Create indexes for blog_db...' &&
+        mongosh --host mongos-router:27017 /docker-entrypoint-initdb.d/indexes_blog_db.js &&
+        echo '>>> All sharded cluster init scripts executed.'
+      "
+    restart: "no"
+
+
+  # MongoDB Exporter
   mongo-exporter:
     image: percona/mongodb_exporter:0.40
     container_name: mongo-exporter
     restart: always
-    depends_on:
-      - mongo
-    entrypoint: ["/mongodb_exporter"]
+    entrypoint: [ "/mongodb_exporter" ]
     command:
-      - '--mongodb.uri=mongodb://admin:admin123@mongo:27017'
-      - '--collect-all'
+      - "--mongodb.uri=${MONGODB_URI_EXPORTER}"
+      - "--collect-all"
       - "--compatible-mode"
     ports:
       - "9216:9216"
 
+  # Monitoring services
+  # Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -37,6 +187,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
+  # Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -51,31 +202,15 @@ services:
     volumes:
       - ./grafana_data:/var/lib/grafana
 
-#  elasticsearch:
-#    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-#    environment:
-#      - discovery.type=single-node
-#      - xpack.security.enabled=false
-#    ports:
-#      - "9200:9200"
-#
-#  kibana:
-#    image: docker.elastic.co/kibana/kibana:8.15.0
-#    environment:
-#      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-#    ports:
-#      - "5601:5601"
-#    depends_on:
-#      - elasticsearch
-#
-#  filebeat:
-#    image: docker.elastic.co/beats/filebeat:8.15.0
-#    user: root
-#    volumes:
-#      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-#      - ./mongo-logs:/var/log/mongodb:ro
-#      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-#      - /var/run/docker.sock:/var/run/docker.sock:ro
-#    depends_on:
-#      - elasticsearch
-#      - mongo
+  # cAdvisor
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro

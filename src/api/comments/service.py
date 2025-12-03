@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from src.db.mongo import db
+from src.db.mongo import get_db
 from src.api.comments import repository as comment_repository
 from src.api.comments.schemas import *
 from fastapi import HTTPException, status
@@ -12,7 +12,6 @@ from typing import List, Dict, Any
 from src.logger import get_logger
 
 logger = get_logger()
-
 
 
 async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentResponse:
@@ -28,6 +27,7 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
     """
 
     # make sure blog exists
+    db = get_db()
     blog = await blog_repository.find_blog_by_id(db, comment_in.blog_id)
     if not blog:
         raise HTTPException(
@@ -55,7 +55,7 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
         root_id = parent["root_id"]
         reply_to_comment_id = comment_in.parent_id
 
-        #parent_user = await user_repository.find_by_id(db, parent["author_id"])
+        # parent_user = await user_repository.find_by_id(db, parent["author_id"])
         parent_user = await user_service.get_user_public(parent["author_id"])
         if not parent_user:
             reply_to_username = "Unknown"
@@ -76,7 +76,7 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
 
     created = await asyncio.wait_for(
         comment_repository.add_comment(db, comment_doc, comment_in.blog_id),
-        timeout=5,
+        timeout=20,
     )
 
     # Root comment: if root_id is None, set it to its own id.
@@ -84,7 +84,7 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
         created["root_id"] = created["id"]
 
     # fetch the author's username and populate author_username.
-    #user = await user_repository.find_by_id(db, author_id)
+    # user = await user_repository.find_by_id(db, author_id)
     user = await user_service.get_user_public(author_id)
     author_username = user["username"] if user else "Unknown"
     author_avatar = user["avatar_url"] if user else "Unknown"
@@ -93,7 +93,6 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
         author_username=author_username,
         author_avatar=author_avatar,
     )
-
 
 
 async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
@@ -105,6 +104,8 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
     - The blog author can delete any comment under the blog
     - A comment author can delete only their own comment
     """
+
+    db = get_db()
 
     # make sure comment/reply exists
     existing = await comment_repository.find_comment_by_id(db, comment_id)
@@ -136,7 +137,6 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
             detail="Forbidden",
         )
 
-
     if existing["is_root"]:
         # delete whole root thread
         deleted_count = await comment_repository.delete_root_thread(db, existing["id"], blog_id)
@@ -146,7 +146,7 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
                 detail="Delete failed",
             )
     else:
-        #delete single reply
+        # delete single reply
         ok = await comment_repository.delete_single_comment(db, comment_id, blog_id)
         if not ok:
             raise HTTPException(
@@ -155,25 +155,24 @@ async def remove_comment(comment_id: str, blog_id: str, author_id: str) -> None:
             )
 
 
-
 async def get_comments_for_blog(
-    blog_id: str,
-    page: int,
-    size: int,
-    replies_page: int = 1,
-    replies_size: int = 10,
+        blog_id: str,
+        page: int,
+        size: int,
+        replies_page: int = 1,
+        replies_size: int = 10,
 ) -> CommentListResponse:
     """
     Get paginated root comments for a blog, with one page of replies attached to each root comment.
     """
     # ensure blog exists
+    db = get_db()
     blog = await blog_repository.find_blog_by_id(db, blog_id)
     if not blog:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Blog not found",
         )
-
 
     skip = (page - 1) * size
     root_comments = await comment_repository.list_root_comments_by_blog(
@@ -222,8 +221,7 @@ async def get_comments_for_blog(
     #     logger.info("users=%s", users)
     #     id_to_username[i]=users["username"]
     # logger.info("id_to_username=%s", id_to_username)
-    #id_to_username = {u["id"]: u["username"] for u in users}
-
+    # id_to_username = {u["id"]: u["username"] for u in users}
 
     root_responses: List[RootCommentResponse] = []
 
@@ -271,9 +269,10 @@ async def get_comments_for_blog(
         has_next=(page * size < total),
     )
 
+
 # get replies list of oen specific root comment
 async def get_replies_for_root(root_id: str, page: int, size: int) -> ReplyListResponse:
-
+    db = get_db()
     root = await comment_repository.find_comment_by_id(db, root_id)
     if not root:
         raise HTTPException(
@@ -316,7 +315,6 @@ async def get_replies_for_root(root_id: str, page: int, size: int) -> ReplyListR
     #     id_to_username[i] = users["username"]
     # logger.info("id_to_username=%s", id_to_username)
 
-
     formatted_replies: List[CommentResponse] = []
     for rp in replies:
         reply_user = user_map.get(rp["author_id"])
@@ -337,5 +335,3 @@ async def get_replies_for_root(root_id: str, page: int, size: int) -> ReplyListR
         total=total,
         has_next=(page * size < total),
     )
-
-

@@ -1,9 +1,7 @@
 import asyncio
 from datetime import datetime
-
 from bson import ObjectId
-
-from src.db.mongo import db
+from src.db.mongo import get_db
 from . import repository
 from src.api.blogs.schemas import *
 from fastapi import HTTPException, status
@@ -12,11 +10,14 @@ from src.api.users import repository as user_repository
 from src.logger import get_logger
 
 logger = get_logger()
+
+
 async def create_blog(author_id: str, blog_in: BlogCreate) -> dict:
+    db = get_db()
     blog_doc = {
         "title": blog_in.title,
         "content": blog_in.content,
-        "author_id": author_id,                 # from JWT
+        "author_id": author_id,  # from JWT
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
         "tags": blog_in.tags,
@@ -24,16 +25,18 @@ async def create_blog(author_id: str, blog_in: BlogCreate) -> dict:
         "like_count": 0,
         "liked_by": [],
     }
-    created = await asyncio.wait_for(repository.add_blog(db, blog_doc), timeout=5)
+    created = await asyncio.wait_for(repository.add_blog(db, blog_doc), timeout=20)
     user = await user_repository.find_by_id(db, created["author_id"])
     user_name = user["username"] if user else "Unknown"
     created["author_username"] = user_name
     return created
 
+
 async def edit_blog(blog_id: str, author_id: str, update_fields: Dict[str, Any]) -> dict:
     """
     Only author can edit blog
     """
+    db = get_db()
     # check blog existed
     existing = await repository.find_blog_by_id(db, blog_id)
     if not existing:
@@ -55,8 +58,7 @@ async def edit_blog(blog_id: str, author_id: str, update_fields: Dict[str, Any])
     if not filtered:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
 
-
-    updated = await asyncio.wait_for(repository.update_blog(db, blog_id, filtered), timeout=5)
+    updated = await asyncio.wait_for(repository.update_blog(db, blog_id, filtered), timeout=20)
     if not updated:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Update failed")
     user = await user_repository.find_by_id(db, updated["author_id"])
@@ -70,6 +72,7 @@ async def remove_blog(blog_id: str, author_id: str) -> None:
     Only author can delete blog
     """
     # check blog existed
+    db = get_db()
     existing = await repository.find_blog_by_id(db, blog_id)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blog not found")
@@ -82,8 +85,10 @@ async def remove_blog(blog_id: str, author_id: str) -> None:
     if not ok:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Delete failed")
 
-#get blog by blog_id, read blog detail content,increase view count
+
+# get blog by blog_id, read blog detail content,increase view count
 async def get_blog(blog_id: str, user_id: str = None) -> dict:
+    db = get_db()
     doc = await repository.find_blog_by_id_and_inc_view(db, blog_id, user_id)
     # Batch query author usernames (to avoid repeated database lookups).
     if not doc:
@@ -94,11 +99,13 @@ async def get_blog(blog_id: str, user_id: str = None) -> dict:
     logger.debug(f"Get blog detail: {doc}")
     return doc
 
+
 # get blog preview without content
 async def get_blog_preview(blog_id: str) -> BlogPreviewResponse:
     """
     get blog without detail content
     """
+    db = get_db()
     doc = await repository.find_blog_by_id(db, blog_id)
     if not doc:
         raise HTTPException(
@@ -115,13 +122,17 @@ async def get_blog_preview(blog_id: str) -> BlogPreviewResponse:
         tags=doc.get("tags", []),
     )
 
-#get blog by author
-async def list_author_blogs(author_id: str, page: int = 1, size: int = 10, exclude_blog_id: str=None) -> Dict[str, Any]:
+
+# get blog by author
+async def list_author_blogs(author_id: str, page: int = 1, size: int = 10, exclude_blog_id: str = None) -> Dict[
+    str, Any]:
     page = max(page, 1)
     size = max(min(size, 50), 1)
     skip = (page - 1) * size
 
-    items = await repository.list_blogs_by_author(db, author_id, limit=size, skip=skip, exclude = exclude_blog_id)
+    db = get_db()
+
+    items = await repository.list_blogs_by_author(db, author_id, limit=size, skip=skip, exclude=exclude_blog_id)
     total = await repository.count_blogs_by_author(db, author_id)
     return {
         "items": items,
@@ -131,11 +142,13 @@ async def list_author_blogs(author_id: str, page: int = 1, size: int = 10, exclu
         "has_next": page * size < total,
     }
 
+
 # hottest blog tagSort tags by the number of blogs that use them, in descending order.
 async def get_hottest_tags(limit: int = 10) -> List[HottestTagResponse]:
     """
     Sort tags by the number of blogs that use them, in descending order.
     """
+    db = get_db()
     raw = await repository.get_hottest_tags(db, limit=limit)
     return [
         HottestTagResponse(
@@ -145,14 +158,16 @@ async def get_hottest_tags(limit: int = 10) -> List[HottestTagResponse]:
         for item in raw
     ]
 
+
 # hottest view blog
 async def list_hottest_blogs_by_views(limit: int = 10) -> List[BlogViewRankResponse]:
+    db = get_db()
     items = await repository.list_blogs_by_views(db, limit=limit)
     return [BlogViewRankResponse(**item) for item in items]
 
 
 async def like_blog(blog_id: str, user_id: str):
-
+    db = get_db()
     blog = await repository.find_blog_by_id(db, blog_id)
 
     if not blog:
@@ -183,4 +198,3 @@ async def like_blog(blog_id: str, user_id: str):
         "is_liked": is_liked,
         "like_count": like_count
     }
-

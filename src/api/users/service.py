@@ -1,6 +1,6 @@
 # app/api/users/service.py
 import asyncio
-from src.db.mongo import db
+from src.db.mongo import get_db
 from . import repository
 from src.api.users.schemas import *
 from src.api.users.utils import hash_password, verify_password
@@ -9,11 +9,12 @@ from src.auth import auth
 from typing import Tuple
 from bson import ObjectId
 from fastapi import HTTPException, status
-from src.db.mongo import db
+
+
 logger = get_logger(__name__)
 
 async def create_user(user_in: UserCreate) -> Tuple[dict, str, str]:
-
+    db = get_db()
     existing_email = await asyncio.wait_for(repository.find_by_email(db, user_in.email), timeout=5)
     if existing_email:
         raise ValueError("Email already registered")
@@ -34,6 +35,7 @@ async def create_user(user_in: UserCreate) -> Tuple[dict, str, str]:
 
 # Fetch user by email
 async def get_user_by_email(email: str):
+    db = get_db()
     user = await db.users.find_one({"email": email})
     if user:
         user["id"] = str(user["_id"])
@@ -44,6 +46,7 @@ async def get_user_public(user_id: str) -> dict:
     """
     use user_id return username
     """
+    db = get_db()
     user_doc = await repository.find_by_id(db, user_id)
     if not user_doc:
         raise HTTPException(
@@ -57,6 +60,7 @@ async def get_user_public(user_id: str) -> dict:
 
 # check password
 async def authenticate_user(email: str, password: str):
+    db = get_db()
     user_doc = await repository.find_by_email(db, email)
     if not user_doc:
         return None
@@ -74,6 +78,7 @@ async def authenticate_user(email: str, password: str):
 
 # change password
 async def change_password(user_id: str, old_password: str, new_password: str) -> None:
+    db = get_db()
     user_doc = await db.users.find_one({"_id": ObjectId(user_id)})
     if not user_doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -89,6 +94,7 @@ async def change_password(user_id: str, old_password: str, new_password: str) ->
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update password")
 
 async def check_username_exists(username: str) -> bool:
+    db = get_db()
     existing = await repository.find_by_username(db, username)
     return existing is not None
 
@@ -103,6 +109,7 @@ async def update_user_info(user_id, user_update) -> dict:
     if "username" in update_data:
         new_username = update_data["username"]
 
+        db = get_db()
         existing_user = await repository.find_by_username(db, new_username)
 
         if existing_user and str(existing_user["_id"]) != user_id:

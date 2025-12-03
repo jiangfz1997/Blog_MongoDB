@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, Request, status
 from jose import jwt, JWTError
 from bson import ObjectId
-from src.db.mongo import db
+from src.db.mongo import get_db
 
 import os
 
@@ -11,8 +11,6 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "DEFAULTSECRETKEY")
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY environment variable not set")
 ALGORITHM = "HS256"
-
-
 
 def create_access_token(data: dict, expires_minutes: int = 15):
     to_encode = data.copy()
@@ -66,7 +64,7 @@ async def get_current_user(
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user ID format")
 
-
+    db = get_db()
     user = await db.users.find_one({"_id": ObjectId(user_id)})
 
     if user is None:
@@ -88,6 +86,7 @@ async def try_get_current_user(request: Request) -> dict | None:
         if not user_id or not ObjectId.is_valid(user_id):
             return None
 
+        db = get_db()
         user = await db.users.find_one({"_id": ObjectId(user_id)})
         if not user:
             return None

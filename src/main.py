@@ -1,10 +1,15 @@
+import os
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=os.getenv("ENV_FILE", ".env.standalone"))
 from typing import Union
-from src.db.mongo import db, init_indexes
+from src.db.mongo import init_mongo, close_mongo, get_db
 from src.api.routes import router as api_router
 from src.logger import logger,setup_logging
 from fastapi.middleware.cors import CORSMiddleware
 from time import time
 from fastapi import FastAPI, Request
+
+
 
 app = FastAPI()
 
@@ -25,8 +30,14 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_startup():
     logger.info("Initializing MongoDB indexes...")
-    await init_indexes()
+    await init_mongo(app)
+    # await init_indexes()
     logger.info("MongoDB indexes initialized")
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await close_mongo(app)
 
 @app.middleware("http")
 async def add_timing_middleware(request: Request, call_next):
@@ -49,5 +60,6 @@ def read_item(item_id: int, q: Union[str, None] = None):
 
 @app.get("/fetch")
 async def fetch():
+    db = get_db()
     count = await db.posts.count_documents({})
     return {"message": f"Connected to MongoDB! Posts in DB: {count}"}
