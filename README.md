@@ -57,15 +57,7 @@ This backend connects to the same MongoDB instance (default URI `mongodb://local
 Swagger UI is available at: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ### Load test
-Locust is used for load testing the FastAPI backend. To run locust:
-
-```bash
-locust -f locust_test.py --host http://localhost:8000
-```
-
-Then open [http://localhost:8089](http://localhost:8089) in your browser to access the Locust web interface.
-
-Log tracking still under development.
+Locust is used for load testing the FastAPI backend. To run locust, refer to the README.MD in under `load_test` folder. 
 
 ---
 

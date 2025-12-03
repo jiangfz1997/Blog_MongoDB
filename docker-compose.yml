@@ -144,21 +144,21 @@ services:
       - ./mongo-init:/docker-entrypoint-initdb.d
     command: >
       bash -c "
-        echo '>>> Sleeping 15s waiting for mongod to be ready...' &&
-        sleep 15 &&
-        echo '>>> Init Config RS (cfg)...' &&
+        echo '>>> Sleeping 35s waiting for mongod to be ready' &&
+        sleep 35 &&
+        echo '>>> Init Config RS (cfg)' &&
         mongosh --host mongo-cfg1:27017 /docker-entrypoint-initdb.d/init_cfg_rs.js &&
-        echo '>>> Init Shard1 RS (shard1)...' &&
+        echo '>>> Init Shard1 RS (shard1)' &&
         mongosh --host mongo-shard1-1:27017 /docker-entrypoint-initdb.d/init_shard1_rs.js &&
-        echo '>>> Init Shard2 RS (shard2)...' &&
+        echo '>>> Init Shard2 RS (shard2)' &&
         mongosh --host mongo-shard2-1:27017 /docker-entrypoint-initdb.d/init_shard2_rs.js &&
-        echo '>>> Add shards on mongos...' &&
+        echo '>>> Add shards on mongos' &&
         mongosh --host mongos-router:27017 /docker-entrypoint-initdb.d/init_sharded_cluster.js &&
-        echo '>>> Enable sharding for blog_db + shard collections...' &&
+        echo '>>> Enable sharding for blog_db + shard collections' &&
         mongosh --host mongos-router:27017 /docker-entrypoint-initdb.d/shard_setup_blog_db.js &&
-        echo '>>> Create indexes for blog_db...' &&
+        echo '>>> Create indexes for blog_db' &&
         mongosh --host mongos-router:27017 /docker-entrypoint-initdb.d/indexes_blog_db.js &&
-        echo '>>> All sharded cluster init scripts executed.'
+        echo '>>> All sharded cluster init scripts executed'
       "
     restart: "no"
 
