@@ -15,18 +15,18 @@ logger = get_logger(__name__)
 
 async def create_user(user_in: UserCreate) -> Tuple[dict, str, str]:
     db = get_db()
-    existing_email = await asyncio.wait_for(repository.find_by_email(db, user_in.email), timeout=5)
+    existing_email = await asyncio.wait_for(repository.find_by_email(db, user_in.email), timeout=10)
     if existing_email:
         raise ValueError("Email already registered")
 
-    existing_username = await asyncio.wait_for(repository.find_by_username(db, user_in.username), timeout=5)
+    existing_username = await asyncio.wait_for(repository.find_by_username(db, user_in.username), timeout=10)
     if existing_username:
         raise ValueError("Username already registered")
 
 
     hashed = hash_password(user_in.password)
     user_doc = {"username": user_in.username, "email": user_in.email, "password": hashed, "avatar_url": user_in.avatar_url, "bio": ""}
-    created = await asyncio.wait_for(repository.insert_user(db, user_doc), timeout=5)
+    created = await asyncio.wait_for(repository.insert_user(db, user_doc), timeout=10)
 
     payload = {"sub": created["id"], "email": created["email"]}
     access = auth.create_access_token(payload)

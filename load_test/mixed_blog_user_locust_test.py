@@ -25,8 +25,8 @@ from create_test_users import create_test_users
 @events.init.add_listener
 def on_locust_init(environment, **kwargs):
     # Configs
-    USER_COUNT = 2000
-    BLOG_COUNT = 3000
+    USER_COUNT = 1500
+    BLOG_COUNT = 4000
     MAX_COMMENTS = 40
     MONGO_URI = "mongodb://localhost:27017"
 
@@ -152,8 +152,6 @@ def _pick_random(seq: List[Any]) -> Optional[Any]:
     return random.choice(seq)
 
 
-# ---------- 终极 Mixed Locust 用户 ----------
-
 
 class MixedBlogUser(HttpUser):
     """
@@ -169,7 +167,6 @@ class MixedBlogUser(HttpUser):
     creds: Dict[str, Any] | None = None
     logged_in: bool = False
 
-    # ------- 生命周期钩子 -------
 
     def on_start(self) -> None:
         """

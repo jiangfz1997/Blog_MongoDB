@@ -76,7 +76,7 @@ async def create_comment(author_id: str, comment_in: CommentCreate) -> CommentRe
 
     created = await asyncio.wait_for(
         comment_repository.add_comment(db, comment_doc, comment_in.blog_id),
-        timeout=20,
+        timeout=10,
     )
 
     # Root comment: if root_id is None, set it to its own id.

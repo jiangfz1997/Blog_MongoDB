@@ -25,7 +25,7 @@ async def create_blog(author_id: str, blog_in: BlogCreate) -> dict:
         "like_count": 0,
         "liked_by": [],
     }
-    created = await asyncio.wait_for(repository.add_blog(db, blog_doc), timeout=20)
+    created = await asyncio.wait_for(repository.add_blog(db, blog_doc), timeout=10)
     user = await user_repository.find_by_id(db, created["author_id"])
     user_name = user["username"] if user else "Unknown"
     created["author_username"] = user_name
