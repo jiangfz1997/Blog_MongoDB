@@ -1,7 +1,6 @@
-# Blog Monitoring Stack (FastAPI + MongoDB + Prometheus + Grafana)
+# Evaluation of Scalability and Distributed Performance
 
-This repository contains a **containerized monitoring and database stack** used for analyzing and visualizing the performance of a MongoDB-based FastAPI blog system.
-It includes MongoDB, Prometheus, Grafana, and Node/MongoDB exporters — all orchestrated via **Docker Compose**.
+This repository contains necessary coponets to investigate how different architectures in MongoDB perform, on standalone deployment and sharded deployment.
 
 ---
 
@@ -11,7 +10,12 @@ It includes MongoDB, Prometheus, Grafana, and Node/MongoDB exporters — all orc
 
 ```bash
 git clone https://github.com/jiangfz1997/Blog_MongoDB.git
-cd Blog_MongoDB
+```
+
+### Switch branch
+
+```bash
+git checkout allen-scaling-and-replication
 ```
 
 ### Set up Python environment
