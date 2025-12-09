@@ -31,10 +31,16 @@ pip install -r requirements.txt
 ### Run the full system with Docker Compose
 Note: Backend FastAPI server is not included in the Docker Compose setup for development purposes.
 It needs to be run separately (see below).
-Start all services in detached mode:
+Start all services in standalone mode:
 
 ```bash
-docker compose up -d
+docker compose --env-file .env.standalone --profile standalone up -d 
+```
+
+or if you wish to run the sharded cluster
+
+```bash
+docker compose --env-file .env.sharded --profile sharded up -d 
 ```
 
 To stop all services:
@@ -48,6 +54,8 @@ If you want to clean up unused containers:
 ```bash
 docker compose down --remove-orphans
 ```
+
+**You MUST stop previewly run containers before switching to a differnt architecture**
 ### FastAPI Development Server
 
 Run the backend manually:
@@ -61,7 +69,7 @@ This backend connects to the same MongoDB instance (default URI `mongodb://local
 Swagger UI is available at: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ### Load test
-Locust is used for load testing the FastAPI backend. To run locust, refer to the README.MD in under `load_test` folder. 
+Locust is used for load testing the FastAPI backend. To run locust, refer to the README.MD under `load_test` folder. 
 
 ---
 
@@ -75,21 +83,6 @@ Locust is used for load testing the FastAPI backend. To run locust, refer to the
 | **Prometheus**     | Scrapes metrics from exporters, stores time-series data.    | `9090`  |
 | **Grafana**        | Visualization layer for metrics dashboards.                 | `3000`  |
 
----
-
-## Grafana Dashboards
-
-Once the containers are up:
-
-* Visit **Grafana UI** → [http://localhost:3000](http://localhost:3000)
-* Default credentials:
-  **user:** `admin`
-  **password:** `admin`
-* Add the **Prometheus data source** (URL: `http://prometheus:9090`)
-* Import dashboards from the `dashboards/` folder:
-
-  * `MongoDB_Instances_Overview.json` – MongoDB operations and latency visualization
-  * Other panels include CPU, memory, and request throughput
 
 ---
 
@@ -112,7 +105,6 @@ docker compose logs -f grafana
 
 ## Notes
 
-* The Node Exporter installation script automatically runs inside the MongoDB container (see `node-exporter-install.sh`).
 * If using Linux or MACOS, cadvisor can be used instead of Node Exporter for container metrics.
 * You can modify `prometheus.yml` to add more targets or scrape intervals.
 * Grafana dashboards can be customized by exporting new JSONs from the UI.
