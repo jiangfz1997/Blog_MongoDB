@@ -49,13 +49,8 @@ To stop all services:
 docker compose down
 ```
 
-If you want to clean up unused containers:
-
-```bash
-docker compose down --remove-orphans
-```
-
 **You MUST stop previewly run containers before switching to a differnt architecture**
+
 ### FastAPI Development Server
 
 Run the backend manually:
