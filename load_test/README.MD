@@ -6,39 +6,9 @@ This Locust load test suite designed to benchmark **standalone** and **sharded c
 
 ### **1 Install dependencies**
 
-```
-pip install -r requirements.txt
-```
+See README.MD under root folder
 
-Run MongoDB with Docker Compose (standalone)
-
-```
-docker compose --env-file .env.standalone --profile standalone up -d 
-```
-
-Or (sharded cluster)
-
-```
-docker compose --env-file .env.sharded --profile sharded  up -d 
-```
-
-Make sure your FastAPI backend is running:
-
-```
-uvicorn src.main:app --host 0.0.0.0 --port 8000
-```
-
-!!! Before switching architectures, run
-
-```
-docker compose down
-```
-
-to stop containers first.
-
----
-
-## **2.1 Run the Ultimate Mixed Load Test**
+## **2.1 Run the Load Test**
 
 Use:
 
