@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, HTTPException
 from src.logger import get_logger
 from src.api.search import service as search_service
@@ -5,7 +7,7 @@ from src.api.search.schemas import SearchUserResult, SearchBlogsResult, BlogSort
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status, Path, Query
 from src.auth import auth
-logger = get_logger()
+logger = get_logger(level="debug")
 router = APIRouter(
     prefix="/search",
     tags=["search"],
@@ -82,8 +84,9 @@ async def search_blogs_endpoint(
     - Title contains the keyword (case-insensitive)
     - Return the paginated results
     """
-    logger.info(f"Search blogs by keyword={keyword}")
-    logger.info(f"Search blogs by tags={tags}")
+    # logger.info(f"Search blogs by keyword={keyword}")
+    # logger.info(f"Search blogs by tags={tags}")
+    start_time = time.time()
     if not keyword and not tags:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -99,6 +102,7 @@ async def search_blogs_endpoint(
         sort_order=sort_order,
     )
     logger.debug("Search blogs result: %s", result)
+    logger.debug(f"time cost in search blogs: {time.time() - start_time}")
     return result
 
 

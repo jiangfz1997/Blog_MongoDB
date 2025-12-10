@@ -32,16 +32,16 @@ class CommentResponse(BaseModel):
 
 # root comment with paginated replies
 class RootCommentResponse(CommentResponse):
-    replies: List[CommentResponse] = Field(default_factory=list,description="Current page of replies under this root comment",) # 新增：该 root 下当前这一页的所有非 root 评论
-    replies_page: int = Field(...,description="Current replies page number (1-based)",)  # 新增：当前 reply 页码
-    replies_size: int = Field(...,description="Number of replies per page",)# 新增：reply 分页大小
-    replies_total: int = Field(...,description="Total number of replies under this root comment",) # 新增：该 root 下 reply 总数
-    replies_has_next: bool = Field(...,description="Whether there are more reply pages after the current one",)  # 新增：reply 是否还有下一页
+    replies: List[CommentResponse] = Field(default_factory=list,description="Current page of replies under this root comment",)
+    replies_page: int = Field(...,description="Current replies page number (1-based)",)
+    replies_size: int = Field(...,description="Number of replies per page",)
+    replies_total: int = Field(...,description="Total number of replies under this root comment",)
+    replies_has_next: bool = Field(...,description="Whether there are more reply pages after the current one",)
 
 
 # paginated root comment list for a blog
 class CommentListResponse(BaseModel):
-    items: List[RootCommentResponse] = Field(...,description="List of root comments for the current page",) # 新增：当前这一页的 root 评论（每个带一页 replies）
+    items: List[RootCommentResponse] = Field(...,description="List of root comments for the current page",)
     page: int = Field(..., description="Current root comment page number (1-based)")
     size: int = Field(..., description="Number of root comments per page")
     total: int = Field(..., description="Total number of root comments for this blog")

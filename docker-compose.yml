@@ -12,7 +12,14 @@ services:
     volumes:
       - ./node-exporter-install.sh:/node-exporter-install.sh
       - ./mongo-data:/data/db
+      - ./mongo_init:/docker-entrypoint-initdb.d
     command: ["/bin/bash", "/node-exporter-install.sh"]
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   mongo-exporter:
     image: percona/mongodb_exporter:0.40
@@ -51,6 +58,39 @@ services:
     volumes:
       - ./grafana_data:/var/lib/grafana
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis_server
+    restart: always
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: .
+    container_name: fastapi_backend
+    restart: always
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - MONGODB_URL=mongodb://admin:admin123@mongo:27017
+      - REDIS_URL=redis://redis:6379/0
+    command: ["/bin/sh", "-c", "uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload"]
+
+  frontend:
+    build: ./vue3-blog
+    container_name: frontend
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 #  elasticsearch:
 #    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
 #    environment:

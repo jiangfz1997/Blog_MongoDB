@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from src.api.blogs.schemas import *
 from src.logger import get_logger
 
@@ -24,7 +24,7 @@ async def create_blog_endpoint(
     claims: dict = Depends(auth.verify_access_token),
 ):
     author_id = claims["sub"]
-    logger.info("Created the blog, author_id is=%s", author_id)
+    logger.debug("Created the blog, author_id is=%s", author_id)
     return await service.create_blog(author_id, payload)
 
 @router.patch(
@@ -40,7 +40,7 @@ async def update_blog_endpoint(
 ):
     author_id = claims["sub"]
     update_fields = payload.dict(exclude_unset=True)
-    logger.info("Updated the blog, blog_id is=%s", blog_id)
+    logger.debug("Updated the blog, blog_id is=%s", blog_id)
     return await service.edit_blog(blog_id, author_id, update_fields)
 
 @router.delete(
@@ -55,7 +55,7 @@ async def delete_blog_endpoint(
 ):
     author_id = claims["sub"]
     await service.remove_blog(blog_id, author_id)
-    logger.info("Deleted the blog, blog_id is=%s", blog_id)
+    logger.debug("Deleted the blog, blog_id is=%s", blog_id)
     return None
 
 #get blog by blog_id
@@ -70,7 +70,7 @@ async def get_blog_by_id_endpoint(
     blog_id: str = Path(..., min_length=24, max_length=24, description="MongoDB ObjectId string"),
     current_user: dict | None = Depends(auth.try_get_current_user)
 ):
-    logger.info("list the blog, blog_id is=%s", blog_id)
+    logger.debug("list the blog, blog_id is=%s", blog_id)
     user_id = current_user["id"] if current_user else None
     return await service.get_blog(blog_id, user_id)
 
@@ -84,7 +84,7 @@ async def get_blog_by_id_endpoint(
 async def get_blog_preview_endpoint(
     blog_id: str = Path(..., min_length=24, max_length=24, description="MongoDB ObjectId string"),
 ):
-    logger.info("get blog preview, blog_id is %s", blog_id)
+    logger.debug("get blog preview, blog_id is %s", blog_id)
     return await service.get_blog_preview(blog_id)
 
 
@@ -100,7 +100,7 @@ async def list_my_blogs_endpoint(
     claims: dict = Depends(auth.verify_access_token),
 ):
     author_id = claims["sub"]
-    logger.info("list my blog, author_id is=%s",author_id)
+    logger.debug("list my blog, author_id is=%s",author_id)
     return await service.list_author_blogs(author_id, page, size)
 
 #get other people blog
@@ -115,7 +115,7 @@ async def list_blogs_by_author_endpoint(
     size: int = Query(10, ge=1, le=50),
     exclude_blog_id: Optional[str] = Query(None, description="Blog ID to exclude from results")
 ):
-    logger.info("list others blog, author_id is=%s", author_id)
+    logger.debug("list others blog, author_id is=%s", author_id)
     return await service.list_author_blogs(author_id, page, size, exclude_blog_id)
 
 # hottest blog tag
@@ -127,11 +127,14 @@ async def list_blogs_by_author_endpoint(
     description="Get the hottest tags ranked by the number of blogs having each tag.",
 )
 async def get_hottest_tags_endpoint(
+    # background_tasks: BackgroundTasks,
     limit: int = Query(10, ge=1, le=50, description="Maximum number of tags to return"),
 ):
-    logger.info("Get hottest tags, limit=%s", limit)
-    return await service.get_hottest_tags(limit)
-
+    tags = await service.get_cached_hot_tags(limit)
+    if tags:
+        return tags
+    # background_tasks.add_task(service.get_hottest_tags, limit)
+    return []
 # hottest view count blog
 @router.get(
     "/views/hottest",
@@ -143,7 +146,6 @@ async def get_hottest_tags_endpoint(
 async def get_hottest_blogs_by_views_endpoint(
     limit: int = Query(10, ge=1, le=50, description="Maximum number of blogs to return"),
 ):
-    logger.info("Get hottest blogs by views, limit=%s", limit)
     return await service.list_hottest_blogs_by_views(limit)
 
 @router.post(
@@ -158,6 +160,6 @@ async def like_blog_post(
     claims: dict = Depends(auth.verify_access_token),
 ):
     user_id = claims["sub"]
-    logger.info("User %s liked blog %s", user_id, blog_id)
+    logger.debug("User %s liked blog %s", user_id, blog_id)
     return await service.like_blog(blog_id, user_id)
 

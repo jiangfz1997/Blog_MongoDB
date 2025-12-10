@@ -13,6 +13,16 @@ It includes MongoDB, Prometheus, Grafana, and Node/MongoDB exporters — all orc
 git clone https://github.com/jiangfz1997/Blog_MongoDB.git
 cd Blog_MongoDB
 ```
+For Demo quick start:
+**NOTE:** Make sure Docker and Docker Compose are installed on your system.
+```bash
+docker-compse up -d
+```
+System will be running at:
+* Grafana: [http://localhost:3000](http://localhost:3000)
+* Prometheus: [http://localhost:9090](http://localhost:9090)
+* MongoDB: `mongodb://localhost:27017`
+* FastAPI backend: [http://{}:8000/docs](http://localhost:8000/docs)
 
 ### Set up Python environment
 

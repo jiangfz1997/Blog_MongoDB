@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime
 
 from bson import ObjectId
@@ -10,7 +11,10 @@ from fastapi import HTTPException, status
 from typing import Dict, Any, Optional
 from src.api.users import repository as user_repository
 from src.logger import get_logger
+from src.core.redis import redis_client
 
+CACHE_KEY = "hot_tags:top10"
+_is_refreshing = False
 logger = get_logger()
 async def create_blog(author_id: str, blog_in: BlogCreate) -> dict:
     blog_doc = {
@@ -136,7 +140,23 @@ async def get_hottest_tags(limit: int = 10) -> List[HottestTagResponse]:
     """
     Sort tags by the number of blogs that use them, in descending order.
     """
+    global _is_refreshing
+    if _is_refreshing: # prevent multiple refreshes
+        return []
+    _is_refreshing = True
     raw = await repository.get_hottest_tags(db, limit=limit)
+    hot_tags = [
+            {"name": item["_id"], "blog_count": item["blog_count"]}
+            for item in raw
+        ]
+    try:
+        await redis_client.set(CACHE_KEY, json.dumps(hot_tags), ex=600)
+    except Exception as e:
+        logger.error(f"Failed to cache hottest tags: {e}")
+    finally:
+        _is_refreshing = False
+
+
     return [
         HottestTagResponse(
             tag=item["_id"],
@@ -144,6 +164,22 @@ async def get_hottest_tags(limit: int = 10) -> List[HottestTagResponse]:
         )
         for item in raw
     ]
+
+
+async def get_cached_hot_tags(limit: int = 10) -> List[HottestTagResponse]:
+    data = await redis_client.get(CACHE_KEY)
+
+    if data:
+        return [
+        HottestTagResponse(
+            tag=item["name"],
+            blog_count=item["blog_count"],
+        )
+        for item in json.loads(data)
+    ]
+
+
+    return []
 
 # hottest view blog
 async def list_hottest_blogs_by_views(limit: int = 10) -> List[BlogViewRankResponse]:

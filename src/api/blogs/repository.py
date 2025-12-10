@@ -215,7 +215,9 @@ async def get_hottest_tags(db: AsyncIOMotorDatabase,limit: int = 10,) -> List[di
     Aggregate and compute the currently hottest tags.
     Sort tags by the number of blogs that use them in descending order, and return the top limit tags.
     """
+    cutoff_date = datetime.utcnow() - timedelta(days=30)
     pipeline = [
+        {"$match": {"created_at": {"$gte": cutoff_date}}},
         {"$unwind": "$tags"},
         {
             "$group": {
@@ -226,6 +228,7 @@ async def get_hottest_tags(db: AsyncIOMotorDatabase,limit: int = 10,) -> List[di
         {"$sort": {"blog_count": -1}},
         {"$limit": limit},
     ]
+
 
     cursor = db.blogs.aggregate(pipeline)
     results: List[dict] = []
@@ -339,10 +342,14 @@ async def get_trending_feed(
     # Calculate the cutoff date
     cutoff_date = datetime.utcnow() - timedelta(days=days_window)
     skip = (page - 1) * size
-
     pipeline = [
-        {"$match": {"created_at": {"$gte": cutoff_date}}},
-
+        {"$match": {
+                "created_at": {"$gte": cutoff_date},
+                "$or": [
+                    {"view_count": {"$gt": 0}}
+                ]
+            }
+        },
         {
             "$addFields": {
                # calculate age in hours
@@ -361,7 +368,6 @@ async def get_trending_feed(
                 }
             }
         },
-
         # score calculation: score = interaction_score / (hours_age + 2)^gravity
         {
             "$addFields": {
@@ -373,15 +379,10 @@ async def get_trending_feed(
                 }
             }
         },
-
         {"$sort": {"trend_score": -1}},
-
         {"$skip": skip},
         {"$limit": size},
-
-
     ]
-
 
     if user_id:
         pipeline.append({
@@ -395,10 +396,9 @@ async def get_trending_feed(
     pipeline.append({
         "$project": {
             "liked_by": 0, "content": 0,
-            "hot_score": 0, "hours_age": 0, "interaction_score": 0  # 算完的过程变量都扔掉
+            "hot_score": 0, "hours_age": 0, "interaction_score": 0
         }
     })
-
     cursor = db.blogs.aggregate(pipeline)
     blogs = await cursor.to_list(length=size)
 

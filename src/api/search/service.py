@@ -35,7 +35,10 @@ async def _build_blog_list_page(
     users = await user_repository.find_by_id_list(db, list(author_ids))
     users_map: Dict[str, Dict[str, str]] = {}
     for user in users:
-        users_map = {user["id"]:  {"username": user["username"], "avatar_url": user["avatar_url"]}}
+        users_map[user["id"]] = {
+            "username": user["username"],
+            "avatar_url": user.get("avatar_url", "")
+        }
     # Build blog preview list
     items: List[SearchBlogPreview] = []
     for doc in blog_docs:

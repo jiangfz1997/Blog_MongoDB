@@ -46,11 +46,11 @@ def setup_logging(filename: str | Path = DEFAULT_LOGFILE, level: str = 'info', w
 
     return root
 
-def get_logger(name: str = None):
+def get_logger(name: str = None, level: str = 'info') -> logging.Logger:
 
     root_name = "blogapp"
-    if not logging.getLogger(root_name).handlers:
-        setup_logging(level=logging.DEBUG)
+    setup_logging(level=level)
+
     logger = logging.getLogger(name or root_name)
     return logger
 

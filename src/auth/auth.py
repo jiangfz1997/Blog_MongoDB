@@ -11,10 +11,10 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "DEFAULTSECRETKEY")
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY environment variable not set")
 ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 
 
-
-def create_access_token(data: dict, expires_minutes: int = 15):
+def create_access_token(data: dict, expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
     to_encode.update({"exp": expire, "type": "access"})
@@ -58,7 +58,7 @@ def get_token_from_request(request: Request) -> str | None:
 
 
 async def get_current_user(
-        payload: dict = Depends(verify_access_token)  # 先拿到 payload
+        payload: dict = Depends(verify_access_token)
 ):
 
     user_id = payload.get("sub")

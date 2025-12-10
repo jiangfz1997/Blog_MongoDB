@@ -54,7 +54,6 @@ async def login_user(credentials: UserLogin):
     user = await authenticate_user(credentials.email, credentials.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    logger.info(f"login successful { user["id"]}")
     # generate tokens
     payload = {"sub": user["id"], "email": user["email"]}
     access = create_access_token(payload)
@@ -95,7 +94,6 @@ async def get_user_by_email_api(email: str):
 async def get_user_public_endpoint(
     user_id: str = Path(..., min_length=24, max_length=24, description="User ID (MongoDB ObjectId string)"),
 ):
-    logger.info("Get public user info, user_id=%s", user_id)
     return await get_user_public(user_id)
 
 
@@ -180,5 +178,4 @@ async def update_current_user_info(
     user_id = current_user["id"]
 
     updated_user = await update_user_info(user_id, user_update)
-    logger.info(f"Updated user info for user_id={user_id}")
     return updated_user

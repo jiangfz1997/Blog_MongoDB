@@ -211,7 +211,7 @@ async def get_comments_for_blog(
         # collect author_id of replies
         for rp in replies:
             author_ids.add(rp["author_id"])
-    logger.info("list author_ids=%s", author_ids)
+    # logger.info("list author_ids=%s", author_ids)
     users_list = await user_repository.find_by_id_list(db, list(author_ids))
     user_map = {u["id"]: u for u in users_list}
     # Query all authors' usernames in a single batch

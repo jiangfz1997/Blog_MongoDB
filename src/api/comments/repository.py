@@ -30,7 +30,7 @@ async def add_comment(db: AsyncIOMotorDatabase, comment_doc: dict, blog_id: str)
     created = await db.comments.find_one({"_id": res.inserted_id})
     await db.blogs.update_one(
         {"_id": ObjectId(blog_id)},
-        {"$inc": {"comment_count": 1}}  # 原子加一，并发安全
+        {"$inc": {"comment_count": 1}}
     )
     return _serialize(created)
 

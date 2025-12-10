@@ -28,7 +28,7 @@ async def create_comment_endpoint(
     claims: dict = Depends(auth.verify_access_token),
 ):
     author_id = claims["sub"]
-    logger.info("Create comment, author_id is %s, blog_id is %s", author_id, payload.blog_id)
+    logger.debug("Create comment, author_id is %s, blog_id is %s", author_id, payload.blog_id)
     created = await comment_service.create_comment(author_id, payload)
     return created
 
@@ -62,7 +62,7 @@ async def delete_comment_endpoint(
         blog_id=blog_id,
         author_id=author_id,
     )
-    logger.info("Deleted comment, comment_id=%s", comment_id)
+    logger.debug("Deleted comment, comment_id=%s", comment_id)
     return None
 
 

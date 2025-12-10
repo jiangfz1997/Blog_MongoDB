@@ -6,7 +6,7 @@ from typing import Optional, List
 MAX_TAGS_PER_BLOG = 6
 # blog creation
 class BlogCreate(BaseModel):
-    title: str = Field(..., min_length=3, max_length=30, description="Blog title between 3 and 30 characters")
+    title: str = Field(..., min_length=3, max_length=150, description="Blog title between 3 and 150 characters")
     content: str = Field(..., min_length=10, description="Blog content, at least 10 characters")
     # tags: conlist(str, max_items=MAX_TAGS_PER_BLOG) = Field(default_factory=list,description="User-defined tags, at most 6 per blog")
     tags: List[str] = Field(default_factory=list, description="User-defined tags, at most 6 per blog")
