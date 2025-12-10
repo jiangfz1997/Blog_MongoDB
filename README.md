@@ -1,4 +1,4 @@
-# Blog Monitoring Stack (FastAPI + MongoDB + Prometheus + Grafana)
+# Blog Monitoring Stack (FastAPI + MongoDB + Prometheus + Grafana + Vue.js)
 
 This repository contains a **containerized monitoring and database stack** used for analyzing and visualizing the performance of a MongoDB-based FastAPI blog system.
 It includes MongoDB, Prometheus, Grafana, and Node/MongoDB exporters — all orchestrated via **Docker Compose**.
@@ -13,7 +13,8 @@ It includes MongoDB, Prometheus, Grafana, and Node/MongoDB exporters — all orc
 git clone https://github.com/jiangfz1997/Blog_MongoDB.git
 cd Blog_MongoDB
 ```
-For Demo quick start:
+### For Demo quick start:
+
 **NOTE:** Make sure Docker and Docker Compose are installed on your system.
 ```bash
 docker-compse up -d
@@ -22,7 +23,11 @@ System will be running at:
 * Grafana: [http://localhost:3000](http://localhost:3000)
 * Prometheus: [http://localhost:9090](http://localhost:9090)
 * MongoDB: `mongodb://localhost:27017`
-* FastAPI backend: [http://{}:8000/docs](http://localhost:8000/docs)
+* FastAPI backend api doc: [http://localhost:8001/docs](http://localhost:8001/docs)
+* Frontend: [http://localhost:5173](http://localhost:5173)
+
+---
+## For Development setup:
 
 ### Set up Python environment
 
