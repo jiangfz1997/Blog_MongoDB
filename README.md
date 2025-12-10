@@ -17,7 +17,7 @@ cd Blog_MongoDB
 
 **NOTE:** Make sure Docker and Docker Compose are installed on your system.
 ```bash
-docker-compse up -d
+docker-compose up -d
 ```
 System will be running at:
 * Grafana: [http://localhost:3000](http://localhost:3000)
